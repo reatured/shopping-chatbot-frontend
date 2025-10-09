@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
+import { SettingsModal } from "@/components/SettingsModal";
 import { sendChatMessage } from "@/services/api";
 import { toast } from "sonner";
 
@@ -27,6 +28,10 @@ const Index = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("1");
+  const [mode, setMode] = useState<'anthropic' | 'perplexity'>(() => {
+    const saved = localStorage.getItem('ai-mode');
+    return (saved as 'anthropic' | 'perplexity') || 'anthropic';
+  });
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: "1",
@@ -44,6 +49,15 @@ const Index = () => {
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
   const messages = activeConversation?.messages || [];
+
+  useEffect(() => {
+    localStorage.setItem('ai-mode', mode);
+  }, [mode]);
+
+  const handleModeChange = (newMode: 'anthropic' | 'perplexity') => {
+    setMode(newMode);
+    toast.success(`Switched to ${newMode} mode`);
+  };
 
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
     // Add user message
@@ -121,7 +135,8 @@ const Index = () => {
             ? { ...conv, messages: conv.messages.slice(0, -1) }
             : conv
         ));
-      }
+      },
+      mode
     );
   };
 
@@ -164,16 +179,23 @@ const Index = () => {
       <div className="flex-1 flex flex-col relative z-10">
         {/* Header */}
         <header className="border-b border-gray-200 p-4 glass">
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => setSidebarOpen(true)}
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
-            <h1 className="text-lg font-semibold">AI Shopping Assistant</h1>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => setSidebarOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+              <h1 className="text-lg font-semibold">AI Shopping Assistant</h1>
+            </div>
+            <SettingsModal 
+              mode={mode} 
+              onModeChange={handleModeChange}
+              apiUrl="https://ecommerce-chatbot-api-09va.onrender.com"
+            />
           </div>
         </header>
 

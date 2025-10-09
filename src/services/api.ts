@@ -22,6 +22,7 @@ export async function sendChatMessage(
   onChunk?: (chunk: string) => void,
   onComplete?: () => void,
   onError?: (error: string) => void,
+  mode?: 'anthropic' | 'perplexity',
 ): Promise<void> {
   try {
     const requestBody: ChatMessage = {
@@ -35,12 +36,13 @@ export async function sendChatMessage(
       requestBody.image_media_type = imageMediaType;
     }
 
-    const response = await fetch(`${API_URL}/api/chat/stream`, {
+    const endpoint = mode === 'perplexity' ? '/api/search/stream' : '/api/chat/stream';
+    const response = await fetch(`${API_URL}${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(mode === 'perplexity' ? { query: message } : requestBody),
     });
 
     if (!response.ok) {
