@@ -11,17 +11,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { API_URLS } from "@/config/api";
 
 interface SettingsModalProps {
   apiUrl: string;
+  onApiUrlChange: (url: string) => void;
 }
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'testing' | 'mixed-content';
 
-export const SettingsModal = ({ apiUrl }: SettingsModalProps) => {
+export const SettingsModal = ({ apiUrl, onApiUrlChange }: SettingsModalProps) => {
   const [status, setStatus] = useState<ConnectionStatus>('testing');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
+  const isLocal = apiUrl === API_URLS.LOCAL;
 
   const testConnection = async () => {
     setStatus('testing');
@@ -68,6 +72,11 @@ export const SettingsModal = ({ apiUrl }: SettingsModalProps) => {
     }
   }, [isOpen, apiUrl]);
 
+  const handleEnvironmentToggle = (checked: boolean) => {
+    const newUrl = checked ? API_URLS.LOCAL : API_URLS.PRODUCTION;
+    onApiUrlChange(newUrl);
+  };
+
   const getStatusBadge = () => {
     switch (status) {
       case 'connected':
@@ -97,6 +106,28 @@ export const SettingsModal = ({ apiUrl }: SettingsModalProps) => {
         </DialogHeader>
         
         <div className="space-y-6 py-4">
+          {/* Environment Toggle */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Backend Environment</Label>
+            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              <div className="space-y-1">
+                <div className="font-medium">
+                  {isLocal ? 'Local Development' : 'Production'}
+                </div>
+                <div className="text-sm text-muted-foreground font-mono text-xs">
+                  {apiUrl}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">Local</span>
+                <Switch
+                  checked={isLocal}
+                  onCheckedChange={handleEnvironmentToggle}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Connection Status */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">

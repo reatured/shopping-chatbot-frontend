@@ -1,4 +1,4 @@
-import { API_CONFIG } from '@/config/api';
+import { API_CONFIG, API_URLS } from '@/config/api';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -13,8 +13,11 @@ export async function sendChatMessage(
   onChunk?: (chunk: string) => void,
   onComplete?: () => void,
   onError?: (error: string) => void,
+  apiUrl?: string
 ): Promise<void> {
   try {
+    const baseUrl = apiUrl || localStorage.getItem('api_url') || API_URLS.PRODUCTION;
+    
     // Prepare FormData
     const formData = new FormData();
     formData.append('message', message);
@@ -44,7 +47,7 @@ export async function sendChatMessage(
       formData.append('image', file);
     }
 
-    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT}`, {
+    const response = await fetch(`${baseUrl}${API_CONFIG.ENDPOINTS.CHAT}`, {
       method: 'POST',
       body: formData,
     });

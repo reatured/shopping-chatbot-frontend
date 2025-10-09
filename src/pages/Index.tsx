@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
@@ -8,7 +8,7 @@ import { TypingIndicator } from "@/components/TypingIndicator";
 import { SettingsModal } from "@/components/SettingsModal";
 import { sendChatMessage, Message as ApiMessage } from "@/services/api";
 import { toast } from "sonner";
-import { API_CONFIG } from "@/config/api";
+import { API_CONFIG, API_URLS } from "@/config/api";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -29,6 +29,9 @@ const Index = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("1");
+  const [apiUrl, setApiUrl] = useState(() => {
+    return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
+  });
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: "1",
@@ -46,6 +49,10 @@ const Index = () => {
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
   const messages = activeConversation?.messages || [];
+
+  useEffect(() => {
+    localStorage.setItem('api_url', apiUrl);
+  }, [apiUrl]);
 
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
     // Add user message
@@ -117,7 +124,8 @@ const Index = () => {
         setIsStreaming(false);
         setCurrentStreamingMessage("");
         toast.error(error || "Failed to send message, please retry");
-      }
+      },
+      apiUrl
     );
   };
 
@@ -173,7 +181,8 @@ const Index = () => {
               <h1 className="text-lg font-semibold">AI Shopping Assistant</h1>
             </div>
             <SettingsModal 
-              apiUrl={API_CONFIG.BASE_URL}
+              apiUrl={apiUrl}
+              onApiUrlChange={setApiUrl}
             />
           </div>
         </header>
