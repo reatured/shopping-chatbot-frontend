@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
@@ -32,6 +32,7 @@ const Index = () => {
   const [apiUrl, setApiUrl] = useState(() => {
     return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   });
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: "1",
@@ -53,6 +54,10 @@ const Index = () => {
   useEffect(() => {
     localStorage.setItem('api_url', apiUrl);
   }, [apiUrl]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, currentStreamingMessage]);
 
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
     // Add user message
@@ -201,6 +206,7 @@ const Index = () => {
               />
             )}
             {isStreaming && !currentStreamingMessage && <TypingIndicator />}
+            <div ref={messagesEndRef} />
           </div>
         </div>
 
