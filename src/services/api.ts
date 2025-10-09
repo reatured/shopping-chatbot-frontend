@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = "https://ecommerce-chatbot-api-09va.onrender.com";
 
 export interface ChatMessage {
   message: string;
@@ -21,13 +21,13 @@ export async function sendChatMessage(
   imageMediaType?: string,
   onChunk?: (chunk: string) => void,
   onComplete?: () => void,
-  onError?: (error: string) => void
+  onError?: (error: string) => void,
 ): Promise<void> {
   try {
     const requestBody: ChatMessage = {
       message,
       model: "claude-3-5-sonnet-20241022",
-      max_tokens: 1024
+      max_tokens: 1024,
     };
 
     if (image && imageMediaType) {
@@ -36,9 +36,9 @@ export async function sendChatMessage(
     }
 
     const response = await fetch(`${API_URL}/api/chat/stream`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
     });
@@ -51,12 +51,12 @@ export async function sendChatMessage(
     const decoder = new TextDecoder();
 
     if (!reader) {
-      throw new Error('No response body');
+      throw new Error("No response body");
     }
 
     while (true) {
       const { done, value } = await reader.read();
-      
+
       if (done) {
         onComplete?.();
         break;
@@ -66,7 +66,7 @@ export async function sendChatMessage(
       onChunk?.(chunk);
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+    const errorMessage = error instanceof Error ? error.message : "Failed to send message";
     onError?.(errorMessage);
   }
 }
@@ -75,20 +75,20 @@ export async function searchWithPerplexity(
   query: string,
   onChunk?: (chunk: string) => void,
   onComplete?: () => void,
-  onError?: (error: string) => void
+  onError?: (error: string) => void,
 ): Promise<void> {
   try {
     const requestBody: SearchQuery = {
       query,
       max_results: 5,
       max_tokens_per_page: 1024,
-      country: null
+      country: null,
     };
 
     const response = await fetch(`${API_URL}/api/search/stream`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
     });
@@ -101,12 +101,12 @@ export async function searchWithPerplexity(
     const decoder = new TextDecoder();
 
     if (!reader) {
-      throw new Error('No response body');
+      throw new Error("No response body");
     }
 
     while (true) {
       const { done, value } = await reader.read();
-      
+
       if (done) {
         onComplete?.();
         break;
@@ -116,7 +116,7 @@ export async function searchWithPerplexity(
       onChunk?.(chunk);
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Search failed';
+    const errorMessage = error instanceof Error ? error.message : "Search failed";
     onError?.(errorMessage);
   }
 }
@@ -124,20 +124,20 @@ export async function searchWithPerplexity(
 export function convertImageToBase64(file: File): Promise<{ data: string; mediaType: string; filename: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
     reader.onload = () => {
       const result = reader.result as string;
       // Remove the data URL prefix to get just the base64 string
-      const base64String = result.split(',')[1];
-      
+      const base64String = result.split(",")[1];
+
       resolve({
         data: base64String,
         mediaType: file.type,
-        filename: file.name
+        filename: file.name,
       });
     };
-    
-    reader.onerror = () => reject(new Error('Failed to read file'));
+
+    reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
 }
