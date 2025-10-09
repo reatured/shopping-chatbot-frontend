@@ -1,5 +1,4 @@
 # Welcome to your Lovable project
-TEST
 
 ## Project info
 
