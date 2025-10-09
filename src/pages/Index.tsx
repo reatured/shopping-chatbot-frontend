@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
@@ -6,8 +6,9 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { SettingsModal } from "@/components/SettingsModal";
-import { sendChatMessage } from "@/services/api";
+import { sendChatMessage, Message as ApiMessage } from "@/services/api";
 import { toast } from "sonner";
+import { API_CONFIG } from "@/config/api";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -28,10 +29,6 @@ const Index = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("1");
-  const [mode, setMode] = useState<'anthropic' | 'perplexity'>(() => {
-    const saved = localStorage.getItem('ai-mode');
-    return (saved as 'anthropic' | 'perplexity') || 'anthropic';
-  });
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: "1",
@@ -49,15 +46,6 @@ const Index = () => {
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
   const messages = activeConversation?.messages || [];
-
-  useEffect(() => {
-    localStorage.setItem('ai-mode', mode);
-  }, [mode]);
-
-  const handleModeChange = (newMode: 'anthropic' | 'perplexity') => {
-    setMode(newMode);
-    toast.success(`Switched to ${newMode} mode`);
-  };
 
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
     // Add user message
@@ -89,37 +77,38 @@ const Index = () => {
     setIsStreaming(true);
     setCurrentStreamingMessage("");
 
-    // Create temporary AI message
-    const tempAiMessage: Message = {
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-    };
-    setConversations(prev => prev.map(conv => 
-      conv.id === activeConversationId 
-        ? { ...conv, messages: [...conv.messages, tempAiMessage] }
-        : conv
-    ));
+    // Convert conversation history to API format
+    const conversationHistory: ApiMessage[] = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    let fullResponse = '';
 
     await sendChatMessage(
       message,
+      conversationHistory,
       image,
       imageMediaType,
       (chunk) => {
         // Update streaming message
-        setCurrentStreamingMessage(prev => prev + chunk);
-        setConversations(prev => prev.map(conv => {
-          if (conv.id !== activeConversationId) return conv;
-          const newMessages = [...conv.messages];
-          newMessages[newMessages.length - 1] = {
-            ...newMessages[newMessages.length - 1],
-            content: newMessages[newMessages.length - 1].content + chunk
-          };
-          return { ...conv, messages: newMessages };
-        }));
+        fullResponse += chunk;
+        setCurrentStreamingMessage(fullResponse);
       },
       () => {
-        // Streaming complete
+        // Streaming complete - add assistant message
+        setConversations(prev => prev.map(conv => 
+          conv.id === activeConversationId 
+            ? { 
+                ...conv, 
+                messages: [...conv.messages, {
+                  role: 'assistant',
+                  content: fullResponse,
+                  timestamp: new Date()
+                }]
+              }
+            : conv
+        ));
         setIsStreaming(false);
         setCurrentStreamingMessage("");
       },
@@ -128,15 +117,7 @@ const Index = () => {
         setIsStreaming(false);
         setCurrentStreamingMessage("");
         toast.error(error || "Failed to send message, please retry");
-        
-        // Remove the temporary AI message on error
-        setConversations(prev => prev.map(conv => 
-          conv.id === activeConversationId 
-            ? { ...conv, messages: conv.messages.slice(0, -1) }
-            : conv
-        ));
-      },
-      mode
+      }
     );
   };
 
@@ -192,9 +173,7 @@ const Index = () => {
               <h1 className="text-lg font-semibold">AI Shopping Assistant</h1>
             </div>
             <SettingsModal 
-              mode={mode} 
-              onModeChange={handleModeChange}
-              apiUrl="https://ecommerce-chatbot-api-09va.onrender.com"
+              apiUrl={API_CONFIG.BASE_URL}
             />
           </div>
         </header>
@@ -205,7 +184,14 @@ const Index = () => {
             {messages.map((msg, idx) => (
               <ChatMessage key={idx} {...msg} />
             ))}
-            {isStreaming && <TypingIndicator />}
+            {isStreaming && currentStreamingMessage && (
+              <ChatMessage 
+                role="assistant"
+                content={currentStreamingMessage}
+                timestamp={new Date()}
+              />
+            )}
+            {isStreaming && !currentStreamingMessage && <TypingIndicator />}
           </div>
         </div>
 

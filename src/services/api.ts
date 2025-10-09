@@ -1,127 +1,97 @@
-const API_URL = "https://ecommerce-chatbot-api-09va.onrender.com";
+import { API_CONFIG } from '@/config/api';
 
-export interface ChatMessage {
-  message: string;
-  image?: string;
-  image_media_type?: string;
-  model?: string;
-  max_tokens?: number;
-}
-
-export interface SearchQuery {
-  query: string;
-  max_results?: number;
-  max_tokens_per_page?: number;
-  country?: string | null;
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 export async function sendChatMessage(
   message: string,
+  conversationHistory: Message[],
   image?: string,
   imageMediaType?: string,
   onChunk?: (chunk: string) => void,
   onComplete?: () => void,
   onError?: (error: string) => void,
-  mode?: 'anthropic' | 'perplexity',
 ): Promise<void> {
   try {
-    const requestBody: ChatMessage = {
-      message,
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 1024,
-    };
+    // Prepare FormData
+    const formData = new FormData();
+    formData.append('message', message);
+    formData.append('stream', 'true');
 
+    // Filter valid history (remove empty messages)
+    const validHistory = conversationHistory.filter(msg =>
+      msg.content && msg.content.trim().length > 0
+    );
+
+    // Add conversation history if exists
+    if (validHistory.length > 0) {
+      formData.append('conversation_history', JSON.stringify(validHistory));
+    }
+
+    // Add image if provided (convert base64 to File)
     if (image && imageMediaType) {
-      requestBody.image = image;
-      requestBody.image_media_type = imageMediaType;
+      const base64Data = image.split(',')[1] || image;
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: imageMediaType });
+      const file = new File([blob], 'image.jpg', { type: imageMediaType });
+      formData.append('image', file);
     }
 
-    const endpoint = mode === 'perplexity' ? '/api/search/stream' : '/api/chat/stream';
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(mode === 'perplexity' ? { query: message } : requestBody),
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT}`, {
+      method: 'POST',
+      body: formData,
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
     }
 
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
 
     if (!reader) {
-      throw new Error("No response body");
+      throw new Error('No response body');
     }
 
     while (true) {
       const { done, value } = await reader.read();
-
-      if (done) {
-        onComplete?.();
-        break;
-      }
+      if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      onChunk?.(chunk);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === 'content') {
+              onChunk?.(data.delta);
+            } else if (data.type === 'done') {
+              onComplete?.();
+            } else if (data.type === 'error') {
+              throw new Error(data.message);
+            }
+          } catch (e) {
+            console.error('Parse error:', e);
+          }
+        }
+      }
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to send message";
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
     onError?.(errorMessage);
   }
 }
 
-export async function searchWithPerplexity(
-  query: string,
-  onChunk?: (chunk: string) => void,
-  onComplete?: () => void,
-  onError?: (error: string) => void,
-): Promise<void> {
-  try {
-    const requestBody: SearchQuery = {
-      query,
-      max_results: 5,
-      max_tokens_per_page: 1024,
-      country: null,
-    };
-
-    const response = await fetch(`${API_URL}/api/search/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-
-    if (!reader) {
-      throw new Error("No response body");
-    }
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) {
-        onComplete?.();
-        break;
-      }
-
-      const chunk = decoder.decode(value, { stream: true });
-      onChunk?.(chunk);
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Search failed";
-    onError?.(errorMessage);
-  }
-}
 
 export function convertImageToBase64(file: File): Promise<{ data: string; mediaType: string; filename: string }> {
   return new Promise((resolve, reject) => {
