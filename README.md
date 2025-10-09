@@ -1,73 +1,111 @@
-# Welcome to your Lovable project
+# Shopping Chatbot Frontend
 
-## Project info
+An AI-powered shopping assistant that helps users find products through natural conversation and image search.
 
-**URL**: https://lovable.dev/projects/32aaadc0-4d2f-4174-83b7-eb6f4096d60a
+## Features
 
-## How can I edit this code?
+### 1. General Conversation with Agent
+Ask the chatbot general questions and have natural conversations:
+- "What's your name?"
+- "What can you do?"
+- "How can you help me?"
 
-There are several ways of editing your application.
+### 2. Text-Based Product Recommendation
+Get product recommendations based on your description:
+- "Recommend me a t-shirt for sports"
+- "I need running shoes for marathon training"
+- "Show me casual dresses for summer"
 
-**Use Lovable**
+### 3. Image-Based Product Search
+Upload product images to find similar items or get recommendations:
+- Take a photo of a product you like
+- Upload an image from your device
+- Get recommendations based on visual similarity
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/32aaadc0-4d2f-4174-83b7-eb6f4096d60a) and start prompting.
+**Note:** Product recommendations and search results are limited to items in our predefined catalog.
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
+## Technology Stack
 
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Vite** - Fast build tool and dev server
+- **TypeScript** - Type-safe JavaScript
+- **React 18** - UI library
+- **shadcn-ui** - Accessible component library
+- **Tailwind CSS** - Utility-first CSS framework
+- **TanStack Query** - Data fetching and caching
 
-## How can I deploy this project?
+## Getting Started
 
-Simply open [Lovable](https://lovable.dev/projects/32aaadc0-4d2f-4174-83b7-eb6f4096d60a) and click on Share -> Publish.
+### Prerequisites
 
-## Can I connect a custom domain to my Lovable project?
+- Node.js (v18 or higher)
+- npm or yarn package manager
 
-Yes, you can!
+Install Node.js using [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) (recommended)
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Installation
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```sh
+# Clone the repository
+git clone <repository-url>
+
+# Navigate to the project directory
+cd shopping-chatbot-frontend
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`
+
+### Available Scripts
+
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build locally
+- `npm run lint` - Run ESLint for code quality
+
+## Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # shadcn-ui base components
+│   ├── ChatInput.tsx   # Message input with image upload
+│   ├── ChatMessage.tsx # Message display component
+│   ├── Sidebar.tsx     # Conversation history
+│   └── SettingsModal.tsx
+├── pages/              # Page components
+│   ├── Index.tsx       # Main chat interface
+│   └── NotFound.tsx
+├── services/           # API integration
+│   └── api.ts
+├── hooks/              # Custom React hooks
+├── lib/                # Utilities and helpers
+└── App.tsx             # Root component with routing
+```
+
+## Configuration
+
+The frontend connects to the backend API for AI-powered responses. The API endpoint can be configured in:
+
+- `src/services/api.ts` - API_URL constant
+- `src/pages/Index.tsx` - SettingsModal apiUrl prop
+
+## Usage
+
+1. **Start a conversation**: Type your message in the input field
+2. **Upload an image**: Click the camera icon to upload product images
+3. **View history**: Access previous conversations from the sidebar
+4. **Switch modes**: Use settings to toggle between different AI modes
+
+## Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
