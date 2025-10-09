@@ -15,18 +15,35 @@ interface Message {
   timestamp: Date;
 }
 
+interface Conversation {
+  id: string;
+  title: string;
+  timestamp: string;
+  messages: Message[];
+}
+
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: 'Hello! I\'m your AI shopping assistant. I can help you find products, answer questions, and provide recommendations. You can also upload images of items you\'re interested in!',
-      timestamp: new Date(),
-    }
-  ]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
-  const [activeConversationId] = useState("1");
+  const [activeConversationId, setActiveConversationId] = useState("1");
+  const [conversations, setConversations] = useState<Conversation[]>([
+    {
+      id: "1",
+      title: "New Chat",
+      timestamp: "Now",
+      messages: [
+        {
+          role: 'assistant',
+          content: 'Hello! I\'m your AI shopping assistant. I can help you find products, answer questions, and provide recommendations. You can also upload images of items you\'re interested in!',
+          timestamp: new Date(),
+        }
+      ]
+    }
+  ]);
+
+  const activeConversation = conversations.find(c => c.id === activeConversationId);
+  const messages = activeConversation?.messages || [];
 
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
     // Add user message
@@ -36,7 +53,23 @@ const Index = () => {
       image: image ? `data:${imageMediaType};base64,${image}` : undefined,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
+    
+    // Update conversations
+    setConversations(prev => prev.map(conv => 
+      conv.id === activeConversationId 
+        ? { ...conv, messages: [...conv.messages, userMessage] }
+        : conv
+    ));
+
+    // Update conversation title with first message
+    if (messages.length === 1) {
+      const title = message.slice(0, 30) + (message.length > 30 ? '...' : '');
+      setConversations(prev => prev.map(conv => 
+        conv.id === activeConversationId 
+          ? { ...conv, title }
+          : conv
+      ));
+    }
 
     // Start streaming
     setIsStreaming(true);
@@ -48,7 +81,11 @@ const Index = () => {
       content: '',
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, tempAiMessage]);
+    setConversations(prev => prev.map(conv => 
+      conv.id === activeConversationId 
+        ? { ...conv, messages: [...conv.messages, tempAiMessage] }
+        : conv
+    ));
 
     await sendChatMessage(
       message,
@@ -57,14 +94,15 @@ const Index = () => {
       (chunk) => {
         // Update streaming message
         setCurrentStreamingMessage(prev => prev + chunk);
-        setMessages(prev => {
-          const newMessages = [...prev];
+        setConversations(prev => prev.map(conv => {
+          if (conv.id !== activeConversationId) return conv;
+          const newMessages = [...conv.messages];
           newMessages[newMessages.length - 1] = {
             ...newMessages[newMessages.length - 1],
             content: newMessages[newMessages.length - 1].content + chunk
           };
-          return newMessages;
-        });
+          return { ...conv, messages: newMessages };
+        }));
       },
       () => {
         // Streaming complete
@@ -78,39 +116,54 @@ const Index = () => {
         toast.error(error || "Failed to send message, please retry");
         
         // Remove the temporary AI message on error
-        setMessages(prev => prev.slice(0, -1));
+        setConversations(prev => prev.map(conv => 
+          conv.id === activeConversationId 
+            ? { ...conv, messages: conv.messages.slice(0, -1) }
+            : conv
+        ));
       }
     );
   };
 
   const handleNewChat = () => {
-    setMessages([
-      {
-        role: 'assistant',
-        content: 'Hello! I\'m your AI shopping assistant. How can I help you today?',
-        timestamp: new Date(),
-      }
-    ]);
+    const newId = Date.now().toString();
+    const newConversation: Conversation = {
+      id: newId,
+      title: "New Chat",
+      timestamp: "Now",
+      messages: [
+        {
+          role: 'assistant',
+          content: 'Hello! I\'m your AI shopping assistant. How can I help you today?',
+          timestamp: new Date(),
+        }
+      ]
+    };
+    setConversations(prev => [newConversation, ...prev]);
+    setActiveConversationId(newId);
     setSidebarOpen(false);
+  };
+
+  const handleSelectConversation = (id: string) => {
+    setActiveConversationId(id);
   };
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      {/* Gradient orb background effect */}
-      <div className="gradient-orb" />
-
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         activeConversationId={activeConversationId}
         onNewChat={handleNewChat}
+        onSelectConversation={handleSelectConversation}
+        conversations={conversations}
       />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative z-10">
         {/* Header */}
-        <header className="border-b border-white/10 p-4 glass">
+        <header className="border-b border-gray-200 p-4 glass">
           <div className="flex items-center gap-3">
             <Button
               onClick={() => setSidebarOpen(true)}

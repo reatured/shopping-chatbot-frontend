@@ -12,15 +12,11 @@ interface SidebarProps {
   onClose: () => void;
   activeConversationId: string;
   onNewChat: () => void;
+  onSelectConversation: (id: string) => void;
+  conversations: Conversation[];
 }
 
-const mockConversations: Conversation[] = [
-  { id: "1", title: "Looking for running shoes", timestamp: "2h ago" },
-  { id: "2", title: "Blue t-shirts", timestamp: "Yesterday" },
-  { id: "3", title: "Backpack recommendations", timestamp: "3 days ago" },
-];
-
-export const Sidebar = ({ isOpen, onClose, activeConversationId, onNewChat }: SidebarProps) => {
+export const Sidebar = ({ isOpen, onClose, activeConversationId, onNewChat, onSelectConversation, conversations }: SidebarProps) => {
   return (
     <>
       {/* Mobile overlay */}
@@ -64,21 +60,25 @@ export const Sidebar = ({ isOpen, onClose, activeConversationId, onNewChat }: Si
 
           {/* Conversations */}
           <div className="flex-1 overflow-y-auto space-y-2">
-            {mockConversations.map((conv) => (
+            {conversations.map((conv) => (
               <button
                 key={conv.id}
+                onClick={() => {
+                  onSelectConversation(conv.id);
+                  onClose();
+                }}
                 className={`
                   w-full p-3 rounded-lg text-left
                   transition-all duration-200
                   ${
                     activeConversationId === conv.id
-                      ? 'bg-white/10 border border-white/20'
+                      ? 'bg-gray-200 border border-gray-300'
                       : 'glass-hover'
                   }
                 `}
               >
                 <div className="flex items-start gap-2">
-                  <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0 text-purple-400" />
+                  <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-600" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{conv.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">{conv.timestamp}</p>

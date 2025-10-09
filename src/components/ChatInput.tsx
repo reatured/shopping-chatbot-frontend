@@ -75,7 +75,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-white/10 p-4 glass">
+    <div className="border-t border-gray-200 p-4 glass">
       {selectedImage && (
         <div className="mb-3 flex items-start gap-2 p-2 glass rounded-lg w-fit">
           <img
@@ -122,7 +122,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Ask about products..."
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 min-h-[48px] max-h-[120px]"
+          className="flex-1 bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-400 min-h-[48px] max-h-[120px]"
           disabled={disabled}
           rows={1}
         />
@@ -130,7 +130,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
         <Button
           onClick={handleSend}
           disabled={disabled || (!message.trim() && !selectedImage)}
-          className="flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white"
+          className="flex-shrink-0 bg-gray-800 hover:bg-gray-900 text-white"
           size="icon"
         >
           <Send className="w-5 h-5" />
