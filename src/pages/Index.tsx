@@ -6,6 +6,7 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { SettingsModal } from "@/components/SettingsModal";
+import { ProductsPanel } from "@/components/ProductsPanel";
 import { sendChatMessage, Message as ApiMessage } from "@/services/api";
 import { toast } from "sonner";
 import { API_CONFIG, API_URLS } from "@/config/api";
@@ -170,8 +171,9 @@ const Index = () => {
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative z-10">
-        {/* Header */}
+      <div className="flex-1 flex relative z-10">
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
         <header className="border-b border-gray-200 p-4 glass">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -210,11 +212,15 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Input Area */}
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          disabled={isStreaming}
-        />
+          {/* Input Area */}
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            disabled={isStreaming}
+          />
+        </div>
+
+        {/* Products Panel */}
+        <ProductsPanel />
       </div>
     </div>
   );
