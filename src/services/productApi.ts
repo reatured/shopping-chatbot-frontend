@@ -1,33 +1,5 @@
 import { API_CONFIG, API_URLS } from '@/config/api';
 
-/**
- * Wake up the Render backend (free tier goes to sleep after inactivity)
- * This should be called when the app starts to activate the backend
- */
-export async function wakeUpBackend(apiUrl?: string): Promise<void> {
-  try {
-    const baseUrl = apiUrl || localStorage.getItem('api_url') || API_URLS.PRODUCTION;
-
-    console.log('Waking up backend server...');
-
-    // Make a simple request to wake up the server
-    // Using a lightweight endpoint or health check if available
-    const response = await fetch(`${baseUrl}/api/products?category=car`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(30000), // 30 second timeout for wake-up
-    });
-
-    if (response.ok) {
-      console.log('Backend server is awake and ready!');
-    } else {
-      console.warn('Backend responded but with an error status:', response.status);
-    }
-  } catch (error) {
-    console.error('Error waking up backend (this is normal on first load):', error);
-    // Don't throw - we want the app to continue loading even if wake-up fails
-  }
-}
-
 export interface Product {
   id: number;
   name: string;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Menu, ShoppingBag } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -9,10 +9,9 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { ProductsPanel } from "@/components/ProductsPanel";
 import { QuickActionButtons } from "@/components/QuickActionButtons";
 import { sendChatMessage, Message as ApiMessage } from "@/services/api";
-import { Product } from "@/services/productApi";
 import { toast } from "sonner";
 import { API_CONFIG, API_URLS } from "@/config/api";
-import { getSystemPrompt } from "@/config/prompts";
+import { ConversationStage, getSystemPrompt } from "@/config/prompts";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -33,10 +32,11 @@ const Index = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("1");
+  const [currentStage, setCurrentStage] = useState<ConversationStage>(0);
+  const [conversationSummary, setConversationSummary] = useState<string>("");
+  const [productName, setProductName] = useState<string>("");
   const [quickActions, setQuickActions] = useState<string[]>(["Trending", "Popular", "Car", "Backpack"]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
   const [apiUrl, setApiUrl] = useState(() => {
     return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   });
@@ -75,10 +75,10 @@ const Index = () => {
       image: image ? `data:${imageMediaType};base64,${image}` : undefined,
       timestamp: new Date(),
     };
-
+    
     // Update conversations
-    setConversations(prev => prev.map(conv =>
-      conv.id === activeConversationId
+    setConversations(prev => prev.map(conv => 
+      conv.id === activeConversationId 
         ? { ...conv, messages: [...conv.messages, userMessage] }
         : conv
     ));
@@ -86,8 +86,8 @@ const Index = () => {
     // Update conversation title with first message
     if (messages.length === 1) {
       const title = message.slice(0, 30) + (message.length > 30 ? '...' : '');
-      setConversations(prev => prev.map(conv =>
-        conv.id === activeConversationId
+      setConversations(prev => prev.map(conv => 
+        conv.id === activeConversationId 
           ? { ...conv, title }
           : conv
       ));
@@ -106,6 +106,9 @@ const Index = () => {
     let fullResponse = '';
     let responseContent = '';
 
+    // Log current conversation stage
+    console.log('💬 Sending message with Stage:', currentStage, `(${getSystemPrompt(currentStage).substring(0, 100)}...)`);
+
     await sendChatMessage(
       message,
       conversationHistory,
@@ -116,26 +119,36 @@ const Index = () => {
         fullResponse += chunk;
         setCurrentStreamingMessage(fullResponse);
       },
-      (detectedProducts, detectedActions) => {
-        // Streaming complete - handle products and actions from AI response
+      (detectedStage, detectedSummary, detectedProductName, detectedQuickActions) => {
+        // Streaming complete - use the clean message content (fullResponse)
+        // Metadata has already been extracted by the API service
 
-        // Update products if provided
-        if (detectedProducts && detectedProducts.length > 0) {
-          console.log('📦 Products received:', detectedProducts.length, 'products');
-          setProducts(detectedProducts);
-          setMobileProductsOpen(true); // Auto-open products panel on mobile
+        // Update stage if backend returned one
+        if (detectedStage !== undefined && detectedStage !== currentStage) {
+          console.log('🔄 Stage changed from', currentStage, 'to', detectedStage);
+          setCurrentStage(detectedStage);
+        }
+
+        // Update summary if provided
+        if (detectedSummary) {
+          console.log('📝 Summary updated:', detectedSummary);
+          setConversationSummary(detectedSummary);
+        }
+
+        // Update product name if provided
+        if (detectedProductName) {
+          console.log('🏷️ Product Name updated:', detectedProductName);
+          setProductName(detectedProductName);
         }
 
         // Update quick actions if provided
-        if (detectedActions && detectedActions.length > 0) {
-          console.log('⚡ Quick Actions updated:', detectedActions);
-          setQuickActions(detectedActions);
-        } else {
-          // Clear quick actions if none provided
-          setQuickActions([]);
+        if (detectedQuickActions) {
+          console.log('⚡ Quick Actions updated:', detectedQuickActions);
+          setQuickActions(detectedQuickActions);
         }
 
         // Use the accumulated fullResponse as the message content
+        // This is clean text without JSON structure
         responseContent = fullResponse;
 
         // Add assistant message with the extracted content
@@ -161,7 +174,7 @@ const Index = () => {
         toast.error(error || "Failed to send message, please retry");
       },
       apiUrl,
-      getSystemPrompt()
+      getSystemPrompt(currentStage)
     );
   };
 
@@ -181,8 +194,10 @@ const Index = () => {
     };
     setConversations(prev => [newConversation, ...prev]);
     setActiveConversationId(newId);
+    setCurrentStage(0); // Reset to general conversation stage
+    setConversationSummary(""); // Reset summary
+    setProductName(""); // Reset product name
     setQuickActions(["Trending", "Popular", "Car", "Backpack"]); // Reset quick actions
-    setProducts([]); // Clear products
     setSelectedProductId(null); // Reset selected product
     setSidebarOpen(false);
   };
@@ -201,11 +216,13 @@ const Index = () => {
   const handleProductClick = (productId: number) => {
     console.log('🖱️ Product clicked:', productId);
     setSelectedProductId(productId);
+    setCurrentStage(2); // Transition to product detail stage
   };
 
   const handleBackToSearch = () => {
     console.log('⬅️ Back to search');
     setSelectedProductId(null);
+    setCurrentStage(1); // Return to product search stage
   };
 
   return (
@@ -224,29 +241,31 @@ const Index = () => {
       <div className="flex-1 flex relative z-10 border-r border-gray-200">
         <div className="flex-1 flex flex-col">
           {/* Header */}
-        <header className="border-b border-gray-200 p-3 md:p-4 glass">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+        <header className="border-b border-gray-200 p-4 glass">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
               <Button
                 onClick={() => setSidebarOpen(true)}
                 variant="ghost"
                 size="icon"
-                className="lg:hidden flex-shrink-0"
+                className="lg:hidden"
               >
                 <Menu className="w-5 h-5" />
               </Button>
-              <h1 className="text-base md:text-lg font-semibold truncate">AI Shopping Assistant</h1>
+              <h1 className="text-lg font-semibold">AI Shopping Assistant</h1>
             </div>
             <SettingsModal
               apiUrl={apiUrl}
               onApiUrlChange={setApiUrl}
+              currentStage={currentStage}
+              conversationSummary={conversationSummary}
             />
           </div>
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-3 md:px-4 py-4 md:py-6">
-          <div className="max-w-3xl mx-auto space-y-3 md:space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-6">
+          <div className="max-w-3xl mx-auto space-y-4">
             {messages.map((msg, idx) => (
               <ChatMessage key={idx} {...msg} />
             ))}
@@ -279,25 +298,13 @@ const Index = () => {
 
         {/* Products Panel */}
         <ProductsPanel
-          products={products}
+          currentStage={currentStage}
+          productName={productName}
           selectedProductId={selectedProductId}
           onBackToSearch={handleBackToSearch}
           onProductClick={handleProductClick}
           apiUrl={apiUrl}
-          mobileOpen={mobileProductsOpen}
-          onMobileOpenChange={setMobileProductsOpen}
         />
-
-        {/* Floating Action Button for Mobile (only show when products are available) */}
-        {products.length > 0 && (
-          <Button
-            onClick={() => setMobileProductsOpen(true)}
-            className="lg:hidden fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-gray-800 hover:bg-gray-900 z-50"
-            size="icon"
-          >
-            <ShoppingBag className="h-6 w-6" />
-          </Button>
-        )}
       </div>
     </div>
   );

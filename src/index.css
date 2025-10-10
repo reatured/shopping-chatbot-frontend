@@ -62,8 +62,6 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
     background: linear-gradient(135deg, hsl(var(--gradient-start)) 0%, hsl(var(--gradient-end)) 100%);
     min-height: 100vh;
-    /* Prevent pull-to-refresh on mobile */
-    overscroll-behavior-y: contain;
   }
 
   /* Glass effect utility classes */
@@ -73,33 +71,5 @@ All colors MUST be HSL.
 
   .glass-hover {
     @apply hover:bg-white/80 transition-all duration-200;
-  }
-
-  /* Mobile optimizations */
-  @media (max-width: 768px) {
-    /* Smooth scrolling on mobile */
-    html {
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* Better tap highlighting */
-    * {
-      -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
-    }
-
-    /* Prevent text size adjustment on orientation change */
-    html {
-      -webkit-text-size-adjust: 100%;
-    }
-  }
-
-  /* Hide scrollbar utility */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
   }
 }
