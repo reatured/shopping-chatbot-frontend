@@ -11,6 +11,7 @@ export interface StructuredResponse {
   message: string;
   summary?: string;
   product_name?: string;
+  quick_actions?: string[];
 }
 
 export async function sendChatMessage(
@@ -19,7 +20,7 @@ export async function sendChatMessage(
   image?: string,
   imageMediaType?: string,
   onChunk?: (chunk: string) => void,
-  onComplete?: (stage?: ConversationStage, summary?: string, productName?: string) => void,
+  onComplete?: (stage?: ConversationStage, summary?: string, productName?: string, quickActions?: string[]) => void,
   onError?: (error: string) => void,
   apiUrl?: string,
   systemPrompt?: string
@@ -92,6 +93,7 @@ export async function sendChatMessage(
     let detectedStage: ConversationStage | undefined;
     let detectedSummary: string | undefined;
     let detectedProductName: string | undefined;
+    let detectedQuickActions: string[] | undefined;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -140,6 +142,11 @@ export async function sendChatMessage(
                   detectedProductName = structuredResponse.product_name;
                   console.log('Detected Product Name:', detectedProductName);
                 }
+
+                if (structuredResponse.quick_actions) {
+                  detectedQuickActions = structuredResponse.quick_actions;
+                  console.log('Detected Quick Actions:', detectedQuickActions);
+                }
               } catch (parseError) {
                 // If parsing fails, the response is plain text (no structured output)
                 console.warn('Response is not structured JSON, treating as plain text');
@@ -147,7 +154,7 @@ export async function sendChatMessage(
               }
 
               console.groupEnd();
-              onComplete?.(detectedStage, detectedSummary, detectedProductName);
+              onComplete?.(detectedStage, detectedSummary, detectedProductName, detectedQuickActions);
 
             } else if (data.type === 'error') {
               throw new Error(data.message);

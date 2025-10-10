@@ -31,7 +31,7 @@ export const Sidebar = ({ isOpen, onClose, activeConversationId, onNewChat, onSe
       <aside
         className={`
           fixed top-0 left-0 h-screen w-[260px] z-50
-          glass border-r border-white/10
+          glass border-r border-gray-200
           transform transition-transform duration-200 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0 lg:relative lg:z-0

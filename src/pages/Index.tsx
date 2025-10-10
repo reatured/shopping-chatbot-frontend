@@ -7,6 +7,7 @@ import { ChatInput } from "@/components/ChatInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { SettingsModal } from "@/components/SettingsModal";
 import { ProductsPanel } from "@/components/ProductsPanel";
+import { QuickActionButtons } from "@/components/QuickActionButtons";
 import { sendChatMessage, Message as ApiMessage } from "@/services/api";
 import { toast } from "sonner";
 import { API_CONFIG, API_URLS } from "@/config/api";
@@ -34,6 +35,8 @@ const Index = () => {
   const [currentStage, setCurrentStage] = useState<ConversationStage>(0);
   const [conversationSummary, setConversationSummary] = useState<string>("");
   const [productName, setProductName] = useState<string>("");
+  const [quickActions, setQuickActions] = useState<string[]>(["Trending", "Popular", "Car", "Backpack"]);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [apiUrl, setApiUrl] = useState(() => {
     return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   });
@@ -116,7 +119,7 @@ const Index = () => {
         fullResponse += chunk;
         setCurrentStreamingMessage(fullResponse);
       },
-      (detectedStage, detectedSummary, detectedProductName) => {
+      (detectedStage, detectedSummary, detectedProductName, detectedQuickActions) => {
         // Streaming complete - use the clean message content (fullResponse)
         // Metadata has already been extracted by the API service
 
@@ -136,6 +139,12 @@ const Index = () => {
         if (detectedProductName) {
           console.log('🏷️ Product Name updated:', detectedProductName);
           setProductName(detectedProductName);
+        }
+
+        // Update quick actions if provided
+        if (detectedQuickActions) {
+          console.log('⚡ Quick Actions updated:', detectedQuickActions);
+          setQuickActions(detectedQuickActions);
         }
 
         // Use the accumulated fullResponse as the message content
@@ -188,11 +197,32 @@ const Index = () => {
     setCurrentStage(0); // Reset to general conversation stage
     setConversationSummary(""); // Reset summary
     setProductName(""); // Reset product name
+    setQuickActions(["Trending", "Popular", "Car", "Backpack"]); // Reset quick actions
+    setSelectedProductId(null); // Reset selected product
     setSidebarOpen(false);
   };
 
   const handleSelectConversation = (id: string) => {
     setActiveConversationId(id);
+  };
+
+  const handleQuickAction = (action: string) => {
+    // Clear quick actions when user clicks one
+    setQuickActions([]);
+    // Send the quick action as a message
+    handleSendMessage(action);
+  };
+
+  const handleProductClick = (productId: number) => {
+    console.log('🖱️ Product clicked:', productId);
+    setSelectedProductId(productId);
+    setCurrentStage(2); // Transition to product detail stage
+  };
+
+  const handleBackToSearch = () => {
+    console.log('⬅️ Back to search');
+    setSelectedProductId(null);
+    setCurrentStage(1); // Return to product search stage
   };
 
   return (
@@ -208,7 +238,7 @@ const Index = () => {
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex relative z-10">
+      <div className="flex-1 flex relative z-10 border-r border-gray-200">
         <div className="flex-1 flex flex-col">
           {/* Header */}
         <header className="border-b border-gray-200 p-4 glass">
@@ -240,7 +270,7 @@ const Index = () => {
               <ChatMessage key={idx} {...msg} />
             ))}
             {isStreaming && currentStreamingMessage && (
-              <ChatMessage 
+              <ChatMessage
                 role="assistant"
                 content={currentStreamingMessage}
                 timestamp={new Date()}
@@ -251,10 +281,18 @@ const Index = () => {
           </div>
         </div>
 
+          {/* Quick Action Buttons */}
+          {quickActions.length > 0 && (
+            <QuickActionButtons
+              actions={quickActions}
+              onActionClick={handleQuickAction}
+            />
+          )}
+
           {/* Input Area */}
           <ChatInput
             onSendMessage={handleSendMessage}
-            disabled={isStreaming}
+            disabled={false}
           />
         </div>
 
@@ -262,7 +300,10 @@ const Index = () => {
         <ProductsPanel
           currentStage={currentStage}
           productName={productName}
-          onBackToSearch={() => setCurrentStage(1)}
+          selectedProductId={selectedProductId}
+          onBackToSearch={handleBackToSearch}
+          onProductClick={handleProductClick}
+          apiUrl={apiUrl}
         />
       </div>
     </div>
