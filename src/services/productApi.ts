@@ -17,7 +17,10 @@ export interface Product {
 export interface ProductsResponse {
   products: Product[];
   count: number;
-  category: string | null;
+  filters: {
+    category: string | null;
+    color: string | null;
+  };
 }
 
 export interface SearchResponse {
@@ -28,9 +31,40 @@ export interface SearchResponse {
 }
 
 /**
+ * Get products with optional category and color filters
+ */
+export async function getProducts(
+  filters?: {
+    category?: 'car' | 'backpack';
+    color?: string;
+  },
+  apiUrl?: string
+): Promise<Product[]> {
+  try {
+    const baseUrl = apiUrl || localStorage.getItem('api_url') || API_URLS.PRODUCTION;
+
+    const params = new URLSearchParams();
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.color) params.append('color', filters.color);
+
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await fetch(`${baseUrl}/api/products${queryString}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data: ProductsResponse = await response.json();
+    return data.products;
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw error;
+  }
+}
+
+/**
  * Get products by category
- * Note: Backend doesn't have a dedicated category endpoint yet,
- * so we use the search endpoint with category as the query
+ * Uses the dedicated GET /api/products endpoint with category filter
  */
 export async function getProductsByCategory(
   category: 'car' | 'backpack',
@@ -39,15 +73,14 @@ export async function getProductsByCategory(
   try {
     const baseUrl = apiUrl || localStorage.getItem('api_url') || API_URLS.PRODUCTION;
 
-    // Use search endpoint with category name as query
-    // This works because products have category in their name, description, or tags
-    const response = await fetch(`${baseUrl}/api/products/search?q=${category}`);
+    // Use the new dedicated products endpoint with category filter
+    const response = await fetch(`${baseUrl}/api/products?category=${category}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data: SearchResponse = await response.json();
+    const data: ProductsResponse = await response.json();
     return data.products;
   } catch (error) {
     console.error('Error fetching products by category:', error);
