@@ -52,15 +52,15 @@ export const ProductCard = ({ product, isEmpty = false, onViewDetails }: Product
       </div>
 
       {/* Product Info */}
-      <CardContent className="p-4">
-        <h3 className="font-semibold truncate" title={product.name}>
+      <CardContent className="p-3 md:p-4">
+        <h3 className="font-semibold text-sm md:text-base truncate" title={product.name}>
           {product.name}
         </h3>
         <p className="text-xs text-muted-foreground mt-1">{product.brand}</p>
         <div className="flex items-center gap-2 mt-2">
-          <p className="font-semibold text-lg">${product.price.toLocaleString()}</p>
+          <p className="font-semibold text-base md:text-lg">${product.price.toLocaleString()}</p>
           {product.color && (
-            <span className="text-xs bg-muted px-2 py-1 rounded">{product.color}</span>
+            <span className="text-xs bg-muted px-2 py-0.5 md:py-1 rounded">{product.color}</span>
           )}
         </div>
         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
@@ -69,9 +69,9 @@ export const ProductCard = ({ product, isEmpty = false, onViewDetails }: Product
       </CardContent>
 
       {/* View Details Button */}
-      <CardFooter className="p-4 pt-0">
+      <CardFooter className="p-3 md:p-4 pt-0">
         <Button
-          className="w-full"
+          className="w-full text-sm h-9"
           onClick={() => onViewDetails?.(product.id)}
         >
           View Details

@@ -1,5 +1,5 @@
 import { API_CONFIG, API_URLS } from '@/config/api';
-import { ConversationStage } from '@/config/prompts';
+import { Product } from '@/services/productApi';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -7,11 +7,9 @@ export interface Message {
 }
 
 export interface StructuredResponse {
-  stage: ConversationStage;
   message: string;
-  summary?: string;
-  product_name?: string;
-  quick_actions?: string[];
+  products?: Product[];
+  actions?: string[];
 }
 
 export async function sendChatMessage(
@@ -20,7 +18,7 @@ export async function sendChatMessage(
   image?: string,
   imageMediaType?: string,
   onChunk?: (chunk: string) => void,
-  onComplete?: (stage?: ConversationStage, summary?: string, productName?: string, quickActions?: string[]) => void,
+  onComplete?: (products?: Product[], actions?: string[]) => void,
   onError?: (error: string) => void,
   apiUrl?: string,
   systemPrompt?: string
@@ -90,10 +88,8 @@ export async function sendChatMessage(
 
     let fullResponse = '';  // Accumulate message content for display
     let fullJSON = '';      // Accumulate full JSON for parsing metadata
-    let detectedStage: ConversationStage | undefined;
-    let detectedSummary: string | undefined;
-    let detectedProductName: string | undefined;
-    let detectedQuickActions: string[] | undefined;
+    let detectedProducts: Product[] | undefined;
+    let detectedActions: string[] | undefined;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -123,29 +119,19 @@ export async function sendChatMessage(
               console.log('Full JSON:', fullJSON);
               console.log('Message Content:', fullResponse);
 
-              // Try to parse the complete JSON to extract metadata
+              // Try to parse the complete JSON to extract products and actions
               try {
                 const structuredResponse: StructuredResponse = JSON.parse(fullJSON);
                 console.log('Parsed Structured Response:', structuredResponse);
 
-                if (structuredResponse.stage !== undefined) {
-                  detectedStage = structuredResponse.stage;
-                  console.log('Detected Stage:', detectedStage);
+                if (structuredResponse.products && structuredResponse.products.length > 0) {
+                  detectedProducts = structuredResponse.products;
+                  console.log('Detected Products:', detectedProducts.length, 'products');
                 }
 
-                if (structuredResponse.summary) {
-                  detectedSummary = structuredResponse.summary;
-                  console.log('Detected Summary:', detectedSummary);
-                }
-
-                if (structuredResponse.product_name) {
-                  detectedProductName = structuredResponse.product_name;
-                  console.log('Detected Product Name:', detectedProductName);
-                }
-
-                if (structuredResponse.quick_actions) {
-                  detectedQuickActions = structuredResponse.quick_actions;
-                  console.log('Detected Quick Actions:', detectedQuickActions);
+                if (structuredResponse.actions && structuredResponse.actions.length > 0) {
+                  detectedActions = structuredResponse.actions;
+                  console.log('Detected Actions:', detectedActions);
                 }
               } catch (parseError) {
                 // If parsing fails, the response is plain text (no structured output)
@@ -154,7 +140,7 @@ export async function sendChatMessage(
               }
 
               console.groupEnd();
-              onComplete?.(detectedStage, detectedSummary, detectedProductName, detectedQuickActions);
+              onComplete?.(detectedProducts, detectedActions);
 
             } else if (data.type === 'error') {
               throw new Error(data.message);
