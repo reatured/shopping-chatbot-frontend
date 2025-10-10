@@ -1,8 +1,16 @@
 import { API_CONFIG, API_URLS } from '@/config/api';
+import { ConversationStage } from '@/config/prompts';
 
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+export interface StructuredResponse {
+  stage: ConversationStage;
+  message: string;
+  summary?: string;
+  product_name?: string;
 }
 
 export async function sendChatMessage(
@@ -11,17 +19,23 @@ export async function sendChatMessage(
   image?: string,
   imageMediaType?: string,
   onChunk?: (chunk: string) => void,
-  onComplete?: () => void,
+  onComplete?: (stage?: ConversationStage, summary?: string, productName?: string) => void,
   onError?: (error: string) => void,
-  apiUrl?: string
+  apiUrl?: string,
+  systemPrompt?: string
 ): Promise<void> {
   try {
     const baseUrl = apiUrl || localStorage.getItem('api_url') || API_URLS.PRODUCTION;
-    
+
     // Prepare FormData
     const formData = new FormData();
     formData.append('message', message);
     formData.append('stream', 'true');
+
+    // Add system prompt if provided
+    if (systemPrompt) {
+      formData.append('system_prompt', systemPrompt);
+    }
 
     // Filter valid history (remove empty messages)
     const validHistory = conversationHistory.filter(msg =>
@@ -47,6 +61,15 @@ export async function sendChatMessage(
       formData.append('image', file);
     }
 
+    // Log the entire request payload for debugging
+    console.group('🚀 API Request to Backend');
+    console.log('URL:', `${baseUrl}${API_CONFIG.ENDPOINTS.CHAT}`);
+    console.log('Message:', message);
+    console.log('System Prompt:', systemPrompt || 'None');
+    console.log('Conversation History:', validHistory);
+    console.log('Has Image:', !!image);
+    console.groupEnd();
+
     const response = await fetch(`${baseUrl}${API_CONFIG.ENDPOINTS.CHAT}`, {
       method: 'POST',
       body: formData,
@@ -64,6 +87,12 @@ export async function sendChatMessage(
       throw new Error('No response body');
     }
 
+    let fullResponse = '';  // Accumulate message content for display
+    let fullJSON = '';      // Accumulate full JSON for parsing metadata
+    let detectedStage: ConversationStage | undefined;
+    let detectedSummary: string | undefined;
+    let detectedProductName: string | undefined;
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -76,10 +105,50 @@ export async function sendChatMessage(
           try {
             const data = JSON.parse(line.slice(6));
 
-            if (data.type === 'content') {
+            if (data.type === 'metadata') {
+              // Accumulate metadata but don't display
+              fullJSON += data.delta;
+
+            } else if (data.type === 'content') {
+              // Display content in real-time
+              fullResponse += data.delta;
+              fullJSON += data.delta;
               onChunk?.(data.delta);
+
             } else if (data.type === 'done') {
-              onComplete?.();
+              // Log the complete response for debugging
+              console.group('📥 API Response from Backend');
+              console.log('Full JSON:', fullJSON);
+              console.log('Message Content:', fullResponse);
+
+              // Try to parse the complete JSON to extract metadata
+              try {
+                const structuredResponse: StructuredResponse = JSON.parse(fullJSON);
+                console.log('Parsed Structured Response:', structuredResponse);
+
+                if (structuredResponse.stage !== undefined) {
+                  detectedStage = structuredResponse.stage;
+                  console.log('Detected Stage:', detectedStage);
+                }
+
+                if (structuredResponse.summary) {
+                  detectedSummary = structuredResponse.summary;
+                  console.log('Detected Summary:', detectedSummary);
+                }
+
+                if (structuredResponse.product_name) {
+                  detectedProductName = structuredResponse.product_name;
+                  console.log('Detected Product Name:', detectedProductName);
+                }
+              } catch (parseError) {
+                // If parsing fails, the response is plain text (no structured output)
+                console.warn('Response is not structured JSON, treating as plain text');
+                console.log('Parse Error:', parseError);
+              }
+
+              console.groupEnd();
+              onComplete?.(detectedStage, detectedSummary, detectedProductName);
+
             } else if (data.type === 'error') {
               throw new Error(data.message);
             }

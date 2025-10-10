@@ -8,6 +8,9 @@ interface ChatMessageProps {
 export const ChatMessage = ({ role, content, image, timestamp }: ChatMessageProps) => {
   const isUser = role === 'user';
 
+  // Convert literal \n to actual newlines
+  const formattedContent = content.replace(/\\n/g, '\n');
+
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -28,7 +31,7 @@ export const ChatMessage = ({ role, content, image, timestamp }: ChatMessageProp
             />
           </div>
         )}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words select-text">{formattedContent}</p>
         <p className={`text-xs mt-2 ${isUser ? 'text-white/60' : 'text-gray-500'}`}>
           {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>

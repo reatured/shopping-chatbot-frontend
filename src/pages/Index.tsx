@@ -10,6 +10,7 @@ import { ProductsPanel } from "@/components/ProductsPanel";
 import { sendChatMessage, Message as ApiMessage } from "@/services/api";
 import { toast } from "sonner";
 import { API_CONFIG, API_URLS } from "@/config/api";
+import { ConversationStage, getSystemPrompt } from "@/config/prompts";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -30,6 +31,9 @@ const Index = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("1");
+  const [currentStage, setCurrentStage] = useState<ConversationStage>(0);
+  const [conversationSummary, setConversationSummary] = useState<string>("");
+  const [productName, setProductName] = useState<string>("");
   const [apiUrl, setApiUrl] = useState(() => {
     return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   });
@@ -97,6 +101,10 @@ const Index = () => {
     }));
 
     let fullResponse = '';
+    let responseContent = '';
+
+    // Log current conversation stage
+    console.log('💬 Sending message with Stage:', currentStage, `(${getSystemPrompt(currentStage).substring(0, 100)}...)`);
 
     await sendChatMessage(
       message,
@@ -108,15 +116,40 @@ const Index = () => {
         fullResponse += chunk;
         setCurrentStreamingMessage(fullResponse);
       },
-      () => {
-        // Streaming complete - add assistant message
-        setConversations(prev => prev.map(conv => 
-          conv.id === activeConversationId 
-            ? { 
-                ...conv, 
+      (detectedStage, detectedSummary, detectedProductName) => {
+        // Streaming complete - use the clean message content (fullResponse)
+        // Metadata has already been extracted by the API service
+
+        // Update stage if backend returned one
+        if (detectedStage !== undefined && detectedStage !== currentStage) {
+          console.log('🔄 Stage changed from', currentStage, 'to', detectedStage);
+          setCurrentStage(detectedStage);
+        }
+
+        // Update summary if provided
+        if (detectedSummary) {
+          console.log('📝 Summary updated:', detectedSummary);
+          setConversationSummary(detectedSummary);
+        }
+
+        // Update product name if provided
+        if (detectedProductName) {
+          console.log('🏷️ Product Name updated:', detectedProductName);
+          setProductName(detectedProductName);
+        }
+
+        // Use the accumulated fullResponse as the message content
+        // This is clean text without JSON structure
+        responseContent = fullResponse;
+
+        // Add assistant message with the extracted content
+        setConversations(prev => prev.map(conv =>
+          conv.id === activeConversationId
+            ? {
+                ...conv,
                 messages: [...conv.messages, {
                   role: 'assistant',
-                  content: fullResponse,
+                  content: responseContent,
                   timestamp: new Date()
                 }]
               }
@@ -131,7 +164,8 @@ const Index = () => {
         setCurrentStreamingMessage("");
         toast.error(error || "Failed to send message, please retry");
       },
-      apiUrl
+      apiUrl,
+      getSystemPrompt(currentStage)
     );
   };
 
@@ -151,6 +185,9 @@ const Index = () => {
     };
     setConversations(prev => [newConversation, ...prev]);
     setActiveConversationId(newId);
+    setCurrentStage(0); // Reset to general conversation stage
+    setConversationSummary(""); // Reset summary
+    setProductName(""); // Reset product name
     setSidebarOpen(false);
   };
 
@@ -187,9 +224,11 @@ const Index = () => {
               </Button>
               <h1 className="text-lg font-semibold">AI Shopping Assistant</h1>
             </div>
-            <SettingsModal 
+            <SettingsModal
               apiUrl={apiUrl}
               onApiUrlChange={setApiUrl}
+              currentStage={currentStage}
+              conversationSummary={conversationSummary}
             />
           </div>
         </header>
@@ -220,7 +259,11 @@ const Index = () => {
         </div>
 
         {/* Products Panel */}
-        <ProductsPanel />
+        <ProductsPanel
+          currentStage={currentStage}
+          productName={productName}
+          onBackToSearch={() => setCurrentStage(1)}
+        />
       </div>
     </div>
   );

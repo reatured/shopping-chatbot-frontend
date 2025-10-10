@@ -13,15 +13,18 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { API_URLS } from "@/config/api";
+import { ConversationStage, STAGE_NAMES } from "@/config/prompts";
 
 interface SettingsModalProps {
   apiUrl: string;
   onApiUrlChange: (url: string) => void;
+  currentStage: ConversationStage;
+  conversationSummary: string;
 }
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'testing' | 'mixed-content';
 
-export const SettingsModal = ({ apiUrl, onApiUrlChange }: SettingsModalProps) => {
+export const SettingsModal = ({ apiUrl, onApiUrlChange, currentStage, conversationSummary }: SettingsModalProps) => {
   const [status, setStatus] = useState<ConnectionStatus>('testing');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
@@ -199,6 +202,33 @@ export const SettingsModal = ({ apiUrl, onApiUrlChange }: SettingsModalProps) =>
                 <span className="text-muted-foreground">Protocol:</span>
                 <span className="font-medium">{window.location.protocol.toUpperCase()}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Conversation Stage Debug */}
+          <div className="space-y-3 pt-4 border-t">
+            <Label className="text-base font-semibold">Conversation Stage (Debug)</Label>
+            <div className="p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-muted-foreground">Current Stage:</span>
+                <Badge variant="outline" className="text-base">
+                  Stage {currentStage}
+                </Badge>
+              </div>
+              <div className="text-sm font-medium mb-2">{STAGE_NAMES[currentStage]}</div>
+              <div className="text-xs text-muted-foreground mb-3">
+                {currentStage === 0 && "Bot is in general conversation mode"}
+                {currentStage === 1 && "Bot is helping narrow down products"}
+                {currentStage === 2 && "Bot is providing detailed product information"}
+              </div>
+              {conversationSummary && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <div className="text-xs text-muted-foreground mb-1">Summary:</div>
+                  <div className="text-sm font-medium bg-background p-2 rounded border">
+                    {conversationSummary}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
