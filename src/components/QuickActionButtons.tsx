@@ -15,11 +15,11 @@ export const QuickActionButtons = ({
 }: QuickActionButtonsProps) => {
   return (
     <div
-      className="px-4 py-3 border-t bg-background/95 backdrop-blur animate-in slide-in-from-bottom duration-200"
+      className="px-2 sm:px-4 py-3 border-t bg-background/95 backdrop-blur animate-in slide-in-from-bottom duration-200"
       role="region"
       aria-label="Quick action buttons"
     >
-      <div className="max-w-3xl mx-auto">
+      <div className="w-full sm:max-w-3xl sm:mx-auto">
         <div className="flex gap-2 overflow-x-auto pb-1 -webkit-overflow-scrolling-touch [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {isLoading ? (
             // Show skeleton loading state

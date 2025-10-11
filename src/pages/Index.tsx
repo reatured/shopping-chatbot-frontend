@@ -281,8 +281,8 @@ const Index = () => {
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex relative z-10 border-r border-gray-200">
-        <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex relative z-10 border-r border-gray-200 min-w-0">
+        <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="border-b border-gray-200 p-2 sm:p-4 glass w-full">
           <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
@@ -308,7 +308,7 @@ const Index = () => {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 w-full">
-          <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4 w-full">
+          <div className="w-full sm:max-w-3xl sm:mx-auto space-y-3 sm:space-y-4">
             {messages.map((msg, idx) => (
               <ChatMessage key={idx} {...msg} />
             ))}
