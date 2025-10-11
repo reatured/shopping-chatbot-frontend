@@ -17,3 +17,15 @@
 # 5) Screenshot — Product Detail Page
 ![Product Detail](./screenshots/product-detail.png)
 
+# 6) Backend API Endpoints
+
+**Base URL (Production)**: `https://ecommerce-chatbot-api-09va.onrender.com`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/init` | GET | Get initialization data (categories, welcome message, system prompt) |
+| `/api/chat/anthropic/stream` | POST | Send chat message with streaming response (supports text + image) |
+| `/api/products` | GET | Get all products (optional `?category=` filter) |
+| `/api/products/search` | GET | Search products by query `?q=` (optional `&category=`) |
+| `/api/products/{id}` | GET | Get single product by ID |
+
