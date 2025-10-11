@@ -283,9 +283,9 @@ const Index = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex relative z-10 border-r border-gray-200">
         <div className="flex-1 flex flex-col">
-          {/* Header */}
-        <header className="border-b border-gray-200 p-3 sm:p-4 glass">
-          <div className="flex items-center justify-between gap-2 sm:gap-3">
+        {/* Header */}
+        <header className="border-b border-gray-200 p-2 sm:p-4 glass w-full">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <Button
                 onClick={() => setSidebarOpen(true)}
@@ -307,8 +307,8 @@ const Index = () => {
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6">
-          <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
+        <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 w-full">
+          <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4 w-full">
             {messages.map((msg, idx) => (
               <ChatMessage key={idx} {...msg} />
             ))}

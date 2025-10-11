@@ -12,10 +12,10 @@ export const ChatMessage = ({ role, content, image, timestamp }: ChatMessageProp
   const formattedContent = content.replace(/\\n/g, '\n');
 
   return (
-    <div className={`flex gap-2 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex gap-2 sm:gap-3 w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`
-          max-w-[85%] sm:max-w-[75%] md:max-w-[70%] rounded-2xl p-3 sm:p-4
+          max-w-[90%] sm:max-w-[85%] md:max-w-[75%] rounded-2xl p-2.5 sm:p-4
           ${isUser
             ? 'bg-gray-800 text-white border border-gray-700'
             : 'glass border border-gray-200'
