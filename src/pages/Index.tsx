@@ -284,18 +284,18 @@ const Index = () => {
       <div className="flex-1 flex relative z-10 border-r border-gray-200">
         <div className="flex-1 flex flex-col">
           {/* Header */}
-        <header className="border-b border-gray-200 p-4 glass">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+        <header className="border-b border-gray-200 p-3 sm:p-4 glass">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <Button
                 onClick={() => setSidebarOpen(true)}
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="lg:hidden shrink-0"
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
-              <h1 className="text-lg font-semibold">AI Shopping Assistant</h1>
+              <h1 className="text-sm sm:text-base md:text-lg font-semibold truncate">AI Shopping Assistant</h1>
             </div>
             <SettingsModal
               apiUrl={apiUrl}
@@ -307,8 +307,8 @@ const Index = () => {
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="max-w-3xl mx-auto space-y-4">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6">
+          <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
             {messages.map((msg, idx) => (
               <ChatMessage key={idx} {...msg} />
             ))}

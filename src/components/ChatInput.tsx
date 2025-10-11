@@ -83,28 +83,28 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-gray-200 p-4 glass">
+    <div className="border-t border-gray-200 p-3 sm:p-4 glass">
       {selectedImage && (
-        <div className="mb-3 flex items-start gap-2 p-2 glass rounded-lg w-fit">
-          <div className="relative">
+        <div className="mb-2 sm:mb-3 flex items-start gap-2 p-2 glass rounded-lg w-fit max-w-full">
+          <div className="relative shrink-0">
             <img
               src={selectedImage.preview}
               alt="Preview"
-              className="w-[100px] h-[100px] object-cover rounded border border-white/20"
+              className="w-[80px] h-[80px] sm:w-[100px] sm:h-[100px] object-cover rounded border border-white/20"
             />
             {/* Badge to indicate AI search will be performed */}
-            <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-xs px-1 py-0.5 rounded-tl">
+            <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-[10px] sm:text-xs px-1 py-0.5 rounded-tl">
               AI Search
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground truncate">{selectedImage.filename}</p>
-            <p className="text-xs text-blue-600 mt-1">Will search for similar products</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{selectedImage.filename}</p>
+            <p className="text-[10px] sm:text-xs text-blue-600 mt-0.5 sm:mt-1">Will search for similar products</p>
             <Button
               onClick={handleRemoveImage}
               variant="ghost"
               size="icon"
-              className="h-6 w-6 mt-1"
+              className="h-5 w-5 sm:h-6 sm:w-6 mt-1"
             >
               <X className="w-3 h-3" />
             </Button>
@@ -112,7 +112,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
         </div>
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1.5 sm:gap-2">
         <input
           type="file"
           ref={fileInputRef}
@@ -121,15 +121,15 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           className="hidden"
           disabled={disabled}
         />
-        
+
         <Button
           onClick={() => fileInputRef.current?.click()}
           variant="ghost"
           size="icon"
-          className="glass-hover flex-shrink-0"
+          className="glass-hover flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
           disabled={disabled}
         >
-          <Camera className="w-5 h-5" />
+          <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
         </Button>
 
         <textarea
@@ -137,7 +137,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Ask about products..."
-          className="flex-1 bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-400 min-h-[48px] max-h-[120px]"
+          className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-400 min-h-[40px] sm:min-h-[48px] max-h-[100px] sm:max-h-[120px]"
           disabled={disabled}
           rows={1}
         />
@@ -145,10 +145,10 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
         <Button
           onClick={handleSend}
           disabled={disabled || (!message.trim() && !selectedImage)}
-          className="flex-shrink-0 bg-gray-800 hover:bg-gray-900 text-white"
+          className="flex-shrink-0 bg-gray-800 hover:bg-gray-900 text-white h-9 w-9 sm:h-10 sm:w-10"
           size="icon"
         >
-          <Send className="w-5 h-5" />
+          <Send className="w-4 h-4 sm:w-5 sm:h-5" />
         </Button>
       </div>
     </div>

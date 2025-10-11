@@ -12,27 +12,27 @@ export const ChatMessage = ({ role, content, image, timestamp }: ChatMessageProp
   const formattedContent = content.replace(/\\n/g, '\n');
 
   return (
-    <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex gap-2 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`
-          max-w-[70%] rounded-2xl p-4
-          ${isUser 
-            ? 'bg-gray-800 text-white border border-gray-700' 
+          max-w-[85%] sm:max-w-[75%] md:max-w-[70%] rounded-2xl p-3 sm:p-4
+          ${isUser
+            ? 'bg-gray-800 text-white border border-gray-700'
             : 'glass border border-gray-200'
           }
         `}
       >
         {image && (
-          <div className="mb-3">
+          <div className="mb-2 sm:mb-3">
             <img
               src={image}
               alt="Uploaded"
-              className="rounded-lg border border-white/20 max-w-[150px] h-auto"
+              className="rounded-lg border border-white/20 max-w-[120px] sm:max-w-[150px] h-auto"
             />
           </div>
         )}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words select-text">{formattedContent}</p>
-        <p className={`text-xs mt-2 ${isUser ? 'text-white/60' : 'text-gray-500'}`}>
+        <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words select-text">{formattedContent}</p>
+        <p className={`text-[10px] sm:text-xs mt-1.5 sm:mt-2 ${isUser ? 'text-white/60' : 'text-gray-500'}`}>
           {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
