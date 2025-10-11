@@ -9,6 +9,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { ProductsPanel } from "@/components/ProductsPanel";
 import { QuickActionButtons } from "@/components/QuickActionButtons";
 import { sendChatMessage, Message as ApiMessage } from "@/services/api";
+import { useInitialization } from "@/hooks/useInitialization";
 import { toast } from "sonner";
 import { API_CONFIG, API_URLS } from "@/config/api";
 import { ConversationStage, getSystemPrompt } from "@/config/prompts";
@@ -35,12 +36,22 @@ const Index = () => {
   const [currentStage, setCurrentStage] = useState<ConversationStage>(0);
   const [conversationSummary, setConversationSummary] = useState<string>("");
   const [productName, setProductName] = useState<string>("");
-  const [quickActions, setQuickActions] = useState<string[]>(["Trending", "Popular", "Car", "Backpack"]);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [apiUrl, setApiUrl] = useState(() => {
     return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize categories from backend
+  const {
+    isLoading: isInitializing,
+    categories,
+    error: initError,
+    isInitialized
+  } = useInitialization(apiUrl);
+
+  // Use categories from initialization as quick actions for new conversations
+  const [quickActions, setQuickActions] = useState<string[]>(categories);
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: "1",
@@ -58,6 +69,23 @@ const Index = () => {
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
   const messages = activeConversation?.messages || [];
+
+  // Sync quick actions when categories are loaded
+  useEffect(() => {
+    if (categories.length > 0 && currentStage === 0) {
+      setQuickActions(categories);
+    }
+  }, [categories, currentStage]);
+
+  // Show error toast if initialization failed
+  useEffect(() => {
+    if (initError) {
+      toast.error('Connecting to server...', {
+        description: 'Using cached data. Some features may be limited.',
+        duration: 5000,
+      });
+    }
+  }, [initError]);
 
   useEffect(() => {
     localStorage.setItem('api_url', apiUrl);
@@ -197,7 +225,7 @@ const Index = () => {
     setCurrentStage(0); // Reset to general conversation stage
     setConversationSummary(""); // Reset summary
     setProductName(""); // Reset product name
-    setQuickActions(["Trending", "Popular", "Car", "Backpack"]); // Reset quick actions
+    setQuickActions(categories); // Reset quick actions to initialized categories
     setSelectedProductId(null); // Reset selected product
     setSidebarOpen(false);
   };
@@ -277,22 +305,28 @@ const Index = () => {
               />
             )}
             {isStreaming && !currentStreamingMessage && <TypingIndicator />}
+            {isInitializing && messages.length === 1 && (
+              <div className="text-center py-4" role="status" aria-live="polite">
+                <p className="text-sm text-muted-foreground">Getting ready...</p>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         </div>
 
           {/* Quick Action Buttons */}
-          {quickActions.length > 0 && (
+          {(quickActions.length > 0 || isInitializing) && (
             <QuickActionButtons
               actions={quickActions}
               onActionClick={handleQuickAction}
+              isLoading={isInitializing && !isInitialized}
             />
           )}
 
           {/* Input Area */}
           <ChatInput
             onSendMessage={handleSendMessage}
-            disabled={false}
+            disabled={isInitializing && !isInitialized}
           />
         </div>
 

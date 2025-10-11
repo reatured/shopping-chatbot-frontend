@@ -6,6 +6,7 @@ export const API_URLS = {
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE_URL || API_URLS.PRODUCTION,
   ENDPOINTS: {
+    INIT: '/api/init',
     CHAT: '/api/chat/anthropic/stream',
     PRODUCTS: '/api/products',
     PRODUCTS_SEARCH: '/api/products/search',
