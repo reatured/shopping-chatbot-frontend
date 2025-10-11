@@ -14,6 +14,7 @@ interface ProductsPanelProps {
   onBackToSearch: () => void;
   onProductClick: (productId: number) => void;
   apiUrl?: string;
+  categories?: string[];
 }
 
 export const ProductsPanel = ({
@@ -22,7 +23,8 @@ export const ProductsPanel = ({
   selectedProductId,
   onBackToSearch,
   onProductClick,
-  apiUrl
+  apiUrl,
+  categories = ['car', 'backpack']
 }: ProductsPanelProps) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -32,6 +34,7 @@ export const ProductsPanel = ({
   // Fetch products when in Stage 1 and productName changes
   useEffect(() => {
     if (currentStage === 1 && productName) {
+      console.log('🔍 Stage 1 detected with productName:', productName, '(triggered by text or image search)');
       fetchProducts();
     }
   }, [currentStage, productName]);
@@ -48,8 +51,8 @@ export const ProductsPanel = ({
     setError(null);
 
     try {
-      console.log('🔍 Fetching products for:', productName);
-      const fetchedProducts = await fetchProductsByName(productName, apiUrl);
+      console.log('🔍 Fetching products for:', productName, 'with categories:', categories);
+      const fetchedProducts = await fetchProductsByName(productName, apiUrl, categories);
 
       // Sort by popular for better user experience
       const sortedProducts = sortProducts(fetchedProducts, 'popular');

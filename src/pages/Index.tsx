@@ -96,6 +96,9 @@ const Index = () => {
   }, [messages, currentStreamingMessage]);
 
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
+    // Track if this message has an image
+    const hasImage = !!image;
+
     // Add user message
     const userMessage: Message = {
       role: 'user',
@@ -135,7 +138,8 @@ const Index = () => {
     let responseContent = '';
 
     // Log current conversation stage
-    console.log('💬 Sending message with Stage:', currentStage, `(${getSystemPrompt(currentStage).substring(0, 100)}...)`);
+    const systemPrompt = getSystemPrompt(currentStage, categories);
+    console.log('💬 Sending message with Stage:', currentStage, `(${systemPrompt.substring(0, 100)}...)`);
 
     await sendChatMessage(
       message,
@@ -151,8 +155,14 @@ const Index = () => {
         // Streaming complete - use the clean message content (fullResponse)
         // Metadata has already been extracted by the API service
 
-        // Update stage if backend returned one
-        if (detectedStage !== undefined && detectedStage !== currentStage) {
+        // If image was uploaded and we got a product name, switch to product view
+        if (hasImage && detectedProductName) {
+          console.log('🖼️ Image uploaded with product detection:', detectedProductName);
+          setCurrentStage(1); // Switch to product search stage
+          setProductName(detectedProductName);
+        }
+        // Otherwise, update stage if backend returned one
+        else if (detectedStage !== undefined && detectedStage !== currentStage) {
           console.log('🔄 Stage changed from', currentStage, 'to', detectedStage);
           setCurrentStage(detectedStage);
         }
@@ -163,16 +173,21 @@ const Index = () => {
           setConversationSummary(detectedSummary);
         }
 
-        // Update product name if provided
-        if (detectedProductName) {
+        // Update product name if provided (even without image)
+        if (detectedProductName && !hasImage) {
           console.log('🏷️ Product Name updated:', detectedProductName);
           setProductName(detectedProductName);
         }
 
         // Update quick actions if provided
         if (detectedQuickActions) {
-          console.log('⚡ Quick Actions updated:', detectedQuickActions);
-          setQuickActions(detectedQuickActions);
+          console.log('⚡ Quick Actions received:', detectedQuickActions);
+          // Safety: Limit to max 4 actions
+          const limitedActions = detectedQuickActions.slice(0, 4);
+          setQuickActions(limitedActions);
+          if (detectedQuickActions.length > 4) {
+            console.warn(`⚠️ Truncated ${detectedQuickActions.length} actions to 4:`, detectedQuickActions);
+          }
         }
 
         // Use the accumulated fullResponse as the message content
@@ -202,7 +217,7 @@ const Index = () => {
         toast.error(error || "Failed to send message, please retry");
       },
       apiUrl,
-      getSystemPrompt(currentStage)
+      systemPrompt
     );
   };
 
@@ -338,6 +353,7 @@ const Index = () => {
           onBackToSearch={handleBackToSearch}
           onProductClick={handleProductClick}
           apiUrl={apiUrl}
+          categories={categories}
         />
       </div>
     </div>

@@ -57,8 +57,16 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const handleSend = () => {
     if (!message.trim() && !selectedImage) return;
 
+    // If only image is uploaded without text, provide helpful default message
+    const messageToSend = message.trim() ||
+      (selectedImage ? "I uploaded this image. Can you help me find similar products?" : "");
+
+    if (selectedImage) {
+      console.log('📤 Uploading image for product search...');
+    }
+
     onSendMessage(
-      message.trim(),
+      messageToSend,
       selectedImage?.data,
       selectedImage?.mediaType
     );
@@ -78,13 +86,20 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
     <div className="border-t border-gray-200 p-4 glass">
       {selectedImage && (
         <div className="mb-3 flex items-start gap-2 p-2 glass rounded-lg w-fit">
-          <img
-            src={selectedImage.preview}
-            alt="Preview"
-            className="w-[100px] h-[100px] object-cover rounded border border-white/20"
-          />
+          <div className="relative">
+            <img
+              src={selectedImage.preview}
+              alt="Preview"
+              className="w-[100px] h-[100px] object-cover rounded border border-white/20"
+            />
+            {/* Badge to indicate AI search will be performed */}
+            <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-xs px-1 py-0.5 rounded-tl">
+              AI Search
+            </div>
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground truncate">{selectedImage.filename}</p>
+            <p className="text-xs text-blue-600 mt-1">Will search for similar products</p>
             <Button
               onClick={handleRemoveImage}
               variant="ghost"

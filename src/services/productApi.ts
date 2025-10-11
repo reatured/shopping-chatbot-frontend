@@ -141,32 +141,73 @@ export async function getProductById(
 /**
  * Smart fetch products based on product name from AI
  * Determines whether to use category browse or search
+ *
+ * @param productName - Product name or category from AI
+ * @param apiUrl - Optional API URL
+ * @param availableCategories - Dynamic categories from backend (default: ['car', 'backpack'])
  */
 export async function fetchProductsByName(
   productName: string,
-  apiUrl?: string
+  apiUrl?: string,
+  availableCategories: string[] = ['car', 'backpack']
 ): Promise<Product[]> {
   const lowerName = productName.toLowerCase();
 
-  // Determine category
-  const category = lowerName.includes('car') ? 'car' : 'backpack';
+  // Normalize category name (replace underscores with spaces for matching)
+  const normalizedName = lowerName.replace(/_/g, ' ');
 
-  // Check if it's just the category or a specific search
-  if (lowerName === 'car' || lowerName === 'backpack' || lowerName === 'cars' || lowerName === 'backpacks') {
+  // Determine category by checking which one matches
+  let matchedCategory: string | null = null;
+
+  for (const cat of availableCategories) {
+    const normalizedCat = cat.replace(/_/g, ' ').toLowerCase();
+    const pluralCat = normalizedCat + 's';
+
+    // Check if product name contains this category (exact or plural)
+    if (normalizedName.includes(normalizedCat) || normalizedName.includes(pluralCat) || normalizedName === cat.toLowerCase()) {
+      matchedCategory = cat;
+      break;
+    }
+  }
+
+  // If no category matched, fall back to first available category
+  const category = matchedCategory || availableCategories[0];
+
+  console.log(`🔍 Detected category "${category}" from product name "${productName}"`, {
+    availableCategories,
+    matchedCategory
+  });
+
+  // Check if it's just the category name (no additional descriptors)
+  const isJustCategory = availableCategories.some(cat => {
+    const normalizedCat = cat.replace(/_/g, ' ').toLowerCase();
+    return lowerName === normalizedCat || lowerName === normalizedCat + 's' || lowerName === cat.toLowerCase();
+  });
+
+  if (isJustCategory) {
     // General category view - get all products in category
-    return getProductsByCategory(category, apiUrl);
+    console.log(`📦 Fetching all products for category: ${category}`);
+    return getProductsByCategory(category as any, apiUrl);
   } else {
-    // Specific search - extract search terms
-    const searchQuery = lowerName
-      .replace(/car|cars|backpack|backpacks/g, '')
-      .trim();
+    // Specific search - extract search terms by removing category names
+    let searchQuery = normalizedName;
+
+    // Remove all category names from the search query
+    for (const cat of availableCategories) {
+      const normalizedCat = cat.replace(/_/g, ' ').toLowerCase();
+      searchQuery = searchQuery.replace(new RegExp(`\\b${normalizedCat}s?\\b`, 'g'), '');
+    }
+
+    searchQuery = searchQuery.trim();
 
     if (searchQuery) {
-      // Search with specific terms
-      return searchProducts(searchQuery, category, apiUrl);
+      // Search with specific terms within the category
+      console.log(`🔎 Searching for "${searchQuery}" in category "${category}"`);
+      return searchProducts(searchQuery, category as any, apiUrl);
     } else {
       // Fallback to category browse
-      return getProductsByCategory(category, apiUrl);
+      console.log(`📦 Fallback: Fetching all products for category: ${category}`);
+      return getProductsByCategory(category as any, apiUrl);
     }
   }
 }
