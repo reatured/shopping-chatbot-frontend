@@ -5,7 +5,11 @@ export interface SystemPromptConfig {
   prompt: string;
 }
 
-const JSON_FORMAT_INSTRUCTION = `IMPORTANT: You must respond with a JSON object in the following format:
+const JSON_FORMAT_INSTRUCTION = `🚨 CRITICAL - MANDATORY JSON FORMAT 🚨
+
+Your response MUST be a valid JSON object. Do NOT return plain text. Do NOT return markdown. ONLY valid JSON.
+
+**REQUIRED FORMAT** (copy this structure exactly):
 {
   "stage": <stage_number>,
   "message": "your response message here",
@@ -14,6 +18,18 @@ const JSON_FORMAT_INSTRUCTION = `IMPORTANT: You must respond with a JSON object 
   "quick_actions": ["Option 1", "Option 2", "Option 3", "Option 4"]
 }
 
+**TOOL USAGE WITH JSON**:
+- If you use search_products or other tools, analyze the results
+- Then format your FINAL response as the JSON structure above
+- Example after using search_products:
+  {
+    "stage": 1,
+    "message": "I found 8 great backpacks! The North Face Recon at $99 is perfect for hiking...",
+    "summary": "Searching backpacks, found 8 results",
+    "product_name": "backpack",
+    "quick_actions": ["Budget Options", "Premium", "Hiking Style", "School Bags"]
+  }
+
 Quick Actions Guidelines:
 - Provide MAXIMUM 4 contextual quick action options for the user
 - Keep each option short and actionable (2-4 words max)
@@ -21,7 +37,17 @@ Quick Actions Guidelines:
 - **DEMO MODE**: For Stage 0, offer ["Trending", "Popular", "Cars", "Backpacks"] or similar backpack/car related options
 - For Stage 1 with results: ["Budget", "Premium", "Filters", "Compare"] or specific features
 - For Stage 1 with NO results: Offer category names as quick actions (e.g., ["car", "backpack", "home_appliance"])
-- If no relevant actions, return empty array []`;
+- If no relevant actions, return empty array []
+
+**VALIDATION CHECKLIST**:
+✓ Response starts with { and ends with }
+✓ All field names are in double quotes
+✓ All string values are in double quotes
+✓ No trailing commas
+✓ Valid JSON syntax (test with JSON.parse before sending)
+
+❌ NEVER respond with: "Great! I've found..." or "Here are some options..." as plain text
+✅ ALWAYS respond with: {"stage": 1, "message": "Great! I've found...", ...}`;
 
 export const SYSTEM_PROMPTS: Record<ConversationStage, string> = {
   0: `You are a friendly AI shopping assistant. Your role is to engage in general conversation and understand the customer's needs.

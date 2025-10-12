@@ -126,7 +126,7 @@ export async function sendChatMessage(
               // Try to parse the complete JSON to extract metadata
               try {
                 const structuredResponse: StructuredResponse = JSON.parse(fullJSON);
-                console.log('Parsed Structured Response:', structuredResponse);
+                console.log('✅ Parsed Structured Response:', structuredResponse);
 
                 if (structuredResponse.stage !== undefined) {
                   detectedStage = structuredResponse.stage;
@@ -148,9 +148,47 @@ export async function sendChatMessage(
                   console.log('Detected Quick Actions:', detectedQuickActions);
                 }
               } catch (parseError) {
-                // If parsing fails, the response is plain text (no structured output)
-                console.warn('Response is not structured JSON, treating as plain text');
+                console.warn('⚠️ Initial JSON parsing failed, applying fallback strategies');
                 console.log('Parse Error:', parseError);
+
+                // Fallback 1: Try extracting JSON from mixed text using regex
+                const jsonMatch = fullJSON.match(/\{[^{}]*?"message"[^{}]*?\}/s);
+                if (jsonMatch) {
+                  try {
+                    const extracted: StructuredResponse = JSON.parse(jsonMatch[0]);
+                    console.log('✅ Fallback 1: Extracted JSON from mixed text');
+                    detectedStage = extracted.stage;
+                    detectedSummary = extracted.summary;
+                    detectedProductName = extracted.product_name;
+                    detectedQuickActions = extracted.quick_actions;
+                  } catch (extractError) {
+                    console.warn('Fallback 1 failed, trying next strategy');
+                  }
+                }
+
+                // Fallback 2: Check if response is markdown code block
+                if (!detectedStage && fullJSON.includes('```json')) {
+                  const cleanedJSON = fullJSON.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
+                  try {
+                    const extracted: StructuredResponse = JSON.parse(cleanedJSON);
+                    console.log('✅ Fallback 2: Extracted JSON from markdown code block');
+                    detectedStage = extracted.stage;
+                    detectedSummary = extracted.summary;
+                    detectedProductName = extracted.product_name;
+                    detectedQuickActions = extracted.quick_actions;
+                  } catch (markdownError) {
+                    console.warn('Fallback 2 failed, using default values');
+                  }
+                }
+
+                // Fallback 3: Use safe defaults for plain text responses
+                if (detectedStage === undefined) {
+                  console.log('⚠️ All parsing strategies failed, using default values');
+                  detectedStage = 0; // Default to general conversation
+                  detectedSummary = "General conversation";
+                  detectedQuickActions = [];
+                  // fullResponse already contains the plain text message
+                }
               }
 
               console.groupEnd();

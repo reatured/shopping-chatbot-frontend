@@ -59,6 +59,14 @@ export const ProductsPanel = ({
       setProducts(sortedProducts);
 
       console.log('✅ Fetched', sortedProducts.length, 'products');
+      console.log('📊 DEBUG: Full products array:', sortedProducts);
+      console.log('📊 DEBUG: First product sample:', sortedProducts[0]);
+      console.log('📊 DEBUG: Image URLs:', sortedProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        image_url: p.image_url,
+        hasImageUrl: !!p.image_url
+      })));
     } catch (err) {
       console.error('❌ Error fetching products:', err);
       setError('Failed to load products');
@@ -79,6 +87,14 @@ export const ProductsPanel = ({
       const product = await getProductById(selectedProductId, apiUrl);
       setSelectedProduct(product);
       console.log('✅ Fetched product:', product.name);
+      console.log('📊 DEBUG Stage 2: Product detail:', {
+        id: product.id,
+        name: product.name,
+        image_url: product.image_url,
+        hasImageUrl: !!product.image_url,
+        imageUrlLength: product.image_url?.length,
+        fullProduct: product
+      });
     } catch (err) {
       console.error('❌ Error fetching product details:', err);
       setError('Failed to load product details');
@@ -138,13 +154,38 @@ export const ProductsPanel = ({
           ) : selectedProduct ? (
             <div className="p-4 space-y-4">
               {/* Product Image */}
-              <div className="aspect-square bg-muted rounded-lg overflow-hidden">
+              <div className="aspect-square bg-muted rounded-lg overflow-hidden relative">
                 {selectedProduct.image_url ? (
-                  <img
-                    src={selectedProduct.image_url}
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <>
+                    <img
+                      src={selectedProduct.image_url}
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-cover"
+                      onLoad={() => {
+                        console.log('✅ DEBUG Stage 2: Image loaded successfully for product:', selectedProduct.id, selectedProduct.name);
+                      }}
+                      onError={(e) => {
+                        console.error('❌ DEBUG Stage 2: Image failed to load for product:', {
+                          id: selectedProduct.id,
+                          name: selectedProduct.name,
+                          image_url: selectedProduct.image_url,
+                          error: e
+                        });
+                        // Show placeholder instead of hiding
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          e.currentTarget.style.display = 'none';
+                          const placeholder = parent.querySelector('.image-placeholder');
+                          if (placeholder) {
+                            (placeholder as HTMLElement).style.display = 'flex';
+                          }
+                        }
+                      }}
+                    />
+                    <div className="image-placeholder w-full h-full flex items-center justify-center absolute inset-0 hidden">
+                      <p className="text-sm text-muted-foreground">Image unavailable</p>
+                    </div>
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <p className="text-sm text-muted-foreground">No image available</p>

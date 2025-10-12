@@ -95,6 +95,13 @@ const Index = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, currentStreamingMessage]);
 
+  // Auto-close sidebar when transitioning to product stages to prevent overlay interference
+  useEffect(() => {
+    if (currentStage >= 1 && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  }, [currentStage]);
+
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
     // Track if this message has an image
     const hasImage = !!image;
