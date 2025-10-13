@@ -31,7 +31,7 @@ export async function sendChatMessage(
     // Prepare FormData
     const formData = new FormData();
     formData.append('message', message);
-    formData.append('stream', 'true');
+    formData.append('stream', 'false');  // Disabled streaming for reliable JSON responses
 
     // Add system prompt if provided
     if (systemPrompt) {
@@ -81,90 +81,83 @@ export async function sendChatMessage(
       throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
     }
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
+    // Non-streaming mode: Get complete JSON response
+    const responseData = await response.json();
 
-    if (!reader) {
-      throw new Error('No response body');
-    }
+    console.group('📥 API Response from Backend');
+    console.log('Response Data:', responseData);
 
-    let fullResponse = '';  // Accumulate message content for display
-    let fullJSON = '';      // Accumulate full JSON for parsing metadata
+    // Extract content from the response
+    let messageContent = '';
     let detectedStage: ConversationStage | undefined;
     let detectedSummary: string | undefined;
     let detectedProductName: string | undefined;
     let detectedQuickActions: string[] | undefined;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    if (responseData.type === 'complete') {
+      // Backend returned a complete response
+      const content = responseData.content;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n');
+      // Try to parse as structured JSON first
+      try {
+        const structuredResponse: StructuredResponse = JSON.parse(content);
+        console.log('Parsed Structured Response:', structuredResponse);
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
+        // Extract message content
+        messageContent = structuredResponse.message || '';
 
-            if (data.type === 'metadata') {
-              // Accumulate metadata but don't display
-              fullJSON += data.delta;
+        // Extract metadata
+        if (structuredResponse.stage !== undefined) {
+          detectedStage = structuredResponse.stage;
+          console.log('Detected Stage:', detectedStage);
+        }
 
-            } else if (data.type === 'content') {
-              // Display content in real-time
-              fullResponse += data.delta;
-              fullJSON += data.delta;
-              onChunk?.(data.delta);
+        if (structuredResponse.summary) {
+          detectedSummary = structuredResponse.summary;
+          console.log('Detected Summary:', detectedSummary);
+        }
 
-            } else if (data.type === 'done') {
-              // Log the complete response for debugging
-              console.group('📥 API Response from Backend');
-              console.log('Full JSON:', fullJSON);
-              console.log('Message Content:', fullResponse);
+        if (structuredResponse.product_name) {
+          detectedProductName = structuredResponse.product_name;
+          console.log('Detected Product Name:', detectedProductName);
+        }
 
-              // Try to parse the complete JSON to extract metadata
-              try {
-                const structuredResponse: StructuredResponse = JSON.parse(fullJSON);
-                console.log('Parsed Structured Response:', structuredResponse);
+        if (structuredResponse.quick_actions) {
+          detectedQuickActions = structuredResponse.quick_actions;
+          console.log('Detected Quick Actions:', detectedQuickActions);
+        }
 
-                if (structuredResponse.stage !== undefined) {
-                  detectedStage = structuredResponse.stage;
-                  console.log('Detected Stage:', detectedStage);
-                }
+        // Display the complete message at once
+        if (messageContent && onChunk) {
+          onChunk(messageContent);
+        }
+      } catch (parseError) {
+        // If parsing fails, treat the entire content as plain text message
+        console.warn('Response is not structured JSON, treating as plain text');
+        console.log('Parse Error:', parseError);
+        messageContent = content || '';
 
-                if (structuredResponse.summary) {
-                  detectedSummary = structuredResponse.summary;
-                  console.log('Detected Summary:', detectedSummary);
-                }
-
-                if (structuredResponse.product_name) {
-                  detectedProductName = structuredResponse.product_name;
-                  console.log('Detected Product Name:', detectedProductName);
-                }
-
-                if (structuredResponse.quick_actions) {
-                  detectedQuickActions = structuredResponse.quick_actions;
-                  console.log('Detected Quick Actions:', detectedQuickActions);
-                }
-              } catch (parseError) {
-                // If parsing fails, the response is plain text (no structured output)
-                console.warn('Response is not structured JSON, treating as plain text');
-                console.log('Parse Error:', parseError);
-              }
-
-              console.groupEnd();
-              onComplete?.(detectedStage, detectedSummary, detectedProductName, detectedQuickActions);
-
-            } else if (data.type === 'error') {
-              throw new Error(data.message);
-            }
-          } catch (e) {
-            console.error('Parse error:', e);
-          }
+        // Display plain text at once
+        if (messageContent && onChunk) {
+          onChunk(messageContent);
         }
       }
+    } else if (responseData.type === 'error') {
+      throw new Error(responseData.message || 'Unknown error from backend');
+    } else {
+      // Fallback: treat entire response as message
+      console.warn('Unexpected response format, using fallback');
+      messageContent = responseData.content || JSON.stringify(responseData);
+      if (onChunk) {
+        onChunk(messageContent);
+      }
     }
+
+    console.log('Final Message Content:', messageContent);
+    console.groupEnd();
+
+    // Call completion callback
+    onComplete?.(detectedStage, detectedSummary, detectedProductName, detectedQuickActions);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
     onError?.(errorMessage);
