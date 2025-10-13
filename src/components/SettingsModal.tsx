@@ -21,6 +21,7 @@ interface SettingsModalProps {
   currentStage: ConversationStage;
   conversationSummary: string;
 }
+ 
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'testing' | 'mixed-content';
 
