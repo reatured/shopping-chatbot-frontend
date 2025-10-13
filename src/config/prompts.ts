@@ -44,6 +44,7 @@ Guidelines:
 - When users ask for "trending" or "popular" items, show items from: ${categoriesExamples}
 - If users ask about products not in our catalog, redirect to: ${categoriesExamples}
 - **IMAGE SUPPORT**: When users upload images, analyze them and transition to product search
+- **IMAGE MATCHING PRIORITY**: If an image is uploaded, FIRST look for exact products in the database that match the same brand and model (e.g., uploaded "Honda Civic" → prioritize showing Honda Civic from the catalog). Only suggest alternatives (e.g., Tesla Model 3) if no exact matches exist, and clearly explain why.
 - Set product_category_decided to true when user shows clear intent for a specific category
 - Dynamic Quick Actions: Call get_product_metadata() to suggest actual category names
 
@@ -52,6 +53,7 @@ Guidelines:
 - **METADATA DISCOVERY**: Use get_product_metadata with field="color", "brand", etc.
 - **FILTER MANAGEMENT**: Use filter_products to apply/remove filters dynamically
 - **IMAGE CONTEXT**: If user uploaded an image, reference matching products by name
+- When an image brand/model is detected, use filter_products with {"brand": "<brand>", "model": "<model>"} (if model exists), and present these results before any alternatives.
 - Provide product recommendations and encourage users to click for details
 - Keep responses focused on narrowing down options
 

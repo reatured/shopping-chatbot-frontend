@@ -48,6 +48,10 @@ Detailed product view including specs, visuals, and purchase actions.
 Contextual quick action buttons accelerate follow-up requests during product conversations.  
 ![Product Chat with Quick Buttons](./Image/Product%20Chat%20with%20Quick%20Buttons.png)
 
+**Image Search**  
+Upload an image to find visually similar products from the catalog.  
+![Image Search](./Image/Image%20Search.png)
+
 ---
 
 ## Tech Stack
