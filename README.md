@@ -20,14 +20,33 @@ _Add more products in any category, and the chatbot automatically adapts its rec
 ---
 
 ## Screenshots
-**Chat Interface**  
-![Chat Interface](./screenshots/chat.png)
+**Start Page**  
+The landing page showcasing entry points to the AI shopping assistant.  
+![Start Page](./Image/Start%20Page.jpeg)
 
-**Product Panel Page**  
-![Product Panel](./screenshots/product-panel.png)
+**General Chat**  
+General chat interface for open-ended shopping questions and guidance.  
+![General Chat](./Image/AI%20Shopping%20General%20Chat.jpeg)
+
+**Filter with AI**  
+AI-powered product filtering to refine results by attributes and preferences.  
+![Filter with AI](./Image/Filter%20with%20AI.png)
+
+**Clarification Questions**  
+AI asks clarifying questions to better understand the user’s needs before recommending.  
+![Clarification Questions](./Image/Clarification%20questions%20from%20AI%20%20.png)
+
+**Product Results from Custom Database**  
+Products are retrieved from a custom database to ensure accurate, up-to-date results.  
+![Product Results](./Image/Product%20queried%20from%20custom%20database.png)
 
 **Product Detail Page**  
-![Product Detail](./screenshots/product-detail.png)
+Detailed product view including specs, visuals, and purchase actions.  
+![Product Detail Page](./Image/Product%20detail%20page.png)
+
+**Product Chat with Quick Buttons**  
+Contextual quick action buttons accelerate follow-up requests during product conversations.  
+![Product Chat with Quick Buttons](./Image/Product%20Chat%20with%20Quick%20Buttons.png)
 
 ---
 
