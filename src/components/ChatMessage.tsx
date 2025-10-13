@@ -1,41 +1,36 @@
+import { Bot, User } from "lucide-react";
+import { Message } from "@/utils/storage";
+
 interface ChatMessageProps {
-  role: 'user' | 'assistant';
-  content: string;
-  image?: string;
-  timestamp: Date;
+  message: Message;
 }
 
-export const ChatMessage = ({ role, content, image, timestamp }: ChatMessageProps) => {
-  const isUser = role === 'user';
-
-  // Convert literal \n to actual newlines
-  const formattedContent = content.replace(/\\n/g, '\n');
+export function ChatMessage({ message }: ChatMessageProps) {
+  const { role, content } = message;
 
   return (
-    <div className={`flex gap-2 sm:gap-3 w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`
-          max-w-[90%] sm:max-w-[85%] md:max-w-[75%] rounded-2xl p-2.5 sm:p-4
-          ${isUser
-            ? 'bg-gray-800 text-white border border-gray-700'
-            : 'glass border border-gray-200'
-          }
-        `}
-      >
-        {image && (
-          <div className="mb-2 sm:mb-3">
-            <img
-              src={image}
-              alt="Uploaded"
-              className="rounded-lg border border-white/20 max-w-[120px] sm:max-w-[150px] h-auto"
-            />
-          </div>
-        )}
-        <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words select-text">{formattedContent}</p>
-        <p className={`text-[10px] sm:text-xs mt-1.5 sm:mt-2 ${isUser ? 'text-white/60' : 'text-gray-500'}`}>
-          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </p>
+    <div className={`flex gap-3 ${role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      {role === 'assistant' && (
+        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+          <Bot className="w-4 h-4 text-primary-foreground" />
+        </div>
+      )}
+      
+      <div className="flex flex-col max-w-[85%]">
+        <div className={`rounded-lg p-3 ${
+          role === 'user' 
+            ? 'bg-primary text-primary-foreground' 
+            : 'bg-card text-card-foreground border'
+        }`}>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{content}</p>
+        </div>
       </div>
+
+      {role === 'user' && (
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+          <User className="w-4 h-4" />
+        </div>
+      )}
     </div>
   );
-};
+}

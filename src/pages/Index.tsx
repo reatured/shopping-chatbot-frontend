@@ -1,368 +1,306 @@
 import { useState, useEffect, useRef } from "react";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Sidebar } from "@/components/Sidebar";
+import { toast } from "sonner";
+import { ConversationList } from "@/components/ConversationList";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
-import { SettingsModal } from "@/components/SettingsModal";
 import { ProductsPanel } from "@/components/ProductsPanel";
 import { QuickActionButtons } from "@/components/QuickActionButtons";
-import { sendChatMessage, Message as ApiMessage } from "@/services/api";
-import { useInitialization } from "@/hooks/useInitialization";
-import { toast } from "sonner";
-import { API_CONFIG, API_URLS } from "@/config/api";
-import { ConversationStage, getSystemPrompt } from "@/config/prompts";
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  image?: string;
-  timestamp: Date;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  timestamp: string;
-  messages: Message[];
-}
+import { SettingsModal } from "@/components/SettingsModal";
+import { sendChatMessage, getCategories, getOptions, getProductById } from "@/services/chatApi";
+import {
+  getAllConversations,
+  saveConversation,
+  deleteConversation,
+  createNewConversation,
+  updateConversationTitle,
+  getActiveConversationId,
+  setActiveConversationId,
+  getLastNMessages,
+  Conversation,
+  Message,
+  ProductCard,
+} from "@/utils/storage";
 
 const Index = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
-  const [activeConversationId, setActiveConversationId] = useState("1");
-  const [currentStage, setCurrentStage] = useState<ConversationStage>(0);
-  const [conversationSummary, setConversationSummary] = useState<string>("");
-  const [productName, setProductName] = useState<string>("");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<ProductCard[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [apiUrl, setApiUrl] = useState(() => {
-    return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
-  });
+  const [productDetailMode, setProductDetailMode] = useState(false);
+  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('api_url') || '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Initialize categories from backend
-  const {
-    isLoading: isInitializing,
-    categories,
-    error: initError,
-    isInitialized
-  } = useInitialization(apiUrl);
-
-  // Use categories from initialization as quick actions for new conversations
-  const [quickActions, setQuickActions] = useState<string[]>(categories);
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: "1",
-      title: "New Chat",
-      timestamp: "Now",
-      messages: [
-        {
-          role: 'assistant',
-          content: 'Hello! I\'m your AI shopping assistant. I can help you find products, answer questions, and provide recommendations. You can also upload images of items you\'re interested in!',
-          timestamp: new Date(),
-        }
-      ]
-    }
-  ]);
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
   const messages = activeConversation?.messages || [];
+  const lastMessage = messages[messages.length - 1];
+  const quickActions = lastMessage?.role === 'assistant' ? lastMessage.quick_actions || [] : [];
 
-  // Sync quick actions when categories are loaded
+  // Load conversations on mount
   useEffect(() => {
-    if (categories.length > 0 && currentStage === 0) {
-      setQuickActions(categories);
+    const loaded = getAllConversations();
+    if (loaded.length === 0) {
+      const newConv = createNewConversation();
+      saveConversation(newConv);
+      setConversations([newConv]);
+      setActiveId(newConv.id);
+      setActiveConversationId(newConv.id);
+    } else {
+      setConversations(loaded);
+      const activeId = getActiveConversationId();
+      if (activeId && loaded.find(c => c.id === activeId)) {
+        setActiveId(activeId);
+      } else {
+        setActiveId(loaded[0].id);
+        setActiveConversationId(loaded[0].id);
+      }
     }
-  }, [categories, currentStage]);
+  }, []);
 
-  // Show error toast if initialization failed
+  // Update products when last message changes
   useEffect(() => {
-    if (initError) {
-      toast.error('Connecting to server...', {
-        description: 'Using cached data. Some features may be limited.',
-        duration: 5000,
-      });
+    if (lastMessage?.role === 'assistant' && lastMessage.data?.items) {
+      setSelectedProducts(lastMessage.data.items);
+      setProductDetailMode(lastMessage.data.mode === 'detail');
     }
-  }, [initError]);
+  }, [lastMessage]);
 
-  useEffect(() => {
-    localStorage.setItem('api_url', apiUrl);
-  }, [apiUrl]);
-
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, currentStreamingMessage]);
+  }, [messages]);
 
-  // Auto-close sidebar when transitioning to product stages to prevent overlay interference
+  // Save API URL
   useEffect(() => {
-    if (currentStage >= 1 && sidebarOpen) {
-      setSidebarOpen(false);
+    if (apiUrl) {
+      localStorage.setItem('api_url', apiUrl);
     }
-  }, [currentStage]);
+  }, [apiUrl]);
 
-  const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
-    // Track if this message has an image
-    const hasImage = !!image;
+  const handleNewConversation = () => {
+    const newConv = createNewConversation();
+    saveConversation(newConv);
+    setConversations([newConv, ...conversations]);
+    setActiveId(newConv.id);
+    setActiveConversationId(newConv.id);
+    setSelectedProducts([]);
+    setSelectedProductId(null);
+    setProductDetailMode(false);
+  };
+
+  const handleSelectConversation = (id: string) => {
+    setActiveId(id);
+    setActiveConversationId(id);
+    
+    // Load products from last message
+    const conv = conversations.find(c => c.id === id);
+    const lastMsg = conv?.messages[conv.messages.length - 1];
+    if (lastMsg?.role === 'assistant' && lastMsg.data?.items) {
+      setSelectedProducts(lastMsg.data.items);
+      setProductDetailMode(lastMsg.data.mode === 'detail');
+    } else {
+      setSelectedProducts([]);
+      setProductDetailMode(false);
+    }
+    setSelectedProductId(null);
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    deleteConversation(id);
+    const updated = conversations.filter(c => c.id !== id);
+    setConversations(updated);
+    
+    if (activeConversationId === id) {
+      if (updated.length > 0) {
+        setActiveId(updated[0].id);
+        setActiveConversationId(updated[0].id);
+      } else {
+        handleNewConversation();
+      }
+    }
+  };
+
+  const handleRenameConversation = (id: string, newTitle: string) => {
+    updateConversationTitle(id, newTitle);
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
+  };
+
+  const handleSendMessage = async (content: string) => {
+    if (!activeConversation) return;
 
     // Add user message
     const userMessage: Message = {
       role: 'user',
-      content: message,
-      image: image ? `data:${imageMediaType};base64,${image}` : undefined,
-      timestamp: new Date(),
+      content,
     };
-    
-    // Update conversations
-    setConversations(prev => prev.map(conv => 
-      conv.id === activeConversationId 
-        ? { ...conv, messages: [...conv.messages, userMessage] }
-        : conv
-    ));
 
-    // Update conversation title with first message
-    if (messages.length === 1) {
-      const title = message.slice(0, 30) + (message.length > 30 ? '...' : '');
-      setConversations(prev => prev.map(conv => 
-        conv.id === activeConversationId 
-          ? { ...conv, title }
-          : conv
-      ));
+    const updatedConversation: Conversation = {
+      ...activeConversation,
+      messages: [...activeConversation.messages, userMessage],
+    };
+
+    // Update title from first user message
+    if (activeConversation.messages.length === 0 && content.length > 0) {
+      updatedConversation.title = content.slice(0, 30) + (content.length > 30 ? '...' : '');
     }
 
-    // Start streaming
-    setIsStreaming(true);
-    setCurrentStreamingMessage("");
+    saveConversation(updatedConversation);
+    setConversations(prev => prev.map(c => c.id === activeConversationId ? updatedConversation : c));
 
-    // Convert conversation history to API format
-    const conversationHistory: ApiMessage[] = messages.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
+    setIsLoading(true);
 
-    let fullResponse = '';
-    let responseContent = '';
+    try {
+      // Get last N messages for context
+      const contextMessages = getLastNMessages(updatedConversation, 10);
+      
+      // Get last suggested function if any
+      const lastAssistantMsg = [...updatedConversation.messages]
+        .reverse()
+        .find(m => m.role === 'assistant');
+      const lastSuggestedFunction = lastAssistantMsg?.suggested_functions?.[0]?.function;
 
-    // Log current conversation stage
-    const systemPrompt = getSystemPrompt(currentStage, categories);
-    console.log('💬 Sending message with Stage:', currentStage, `(${systemPrompt.substring(0, 100)}...)`);
+      const response = await sendChatMessage(
+        activeConversation.id,
+        contextMessages,
+        lastSuggestedFunction
+      );
 
-    await sendChatMessage(
-      message,
-      conversationHistory,
-      image,
-      imageMediaType,
-      (chunk) => {
-        // Update streaming message
-        fullResponse += chunk;
-        setCurrentStreamingMessage(fullResponse);
-      },
-      (detectedStage, detectedSummary, detectedProductName, detectedQuickActions) => {
-        // Streaming complete - use the clean message content (fullResponse)
-        // Metadata has already been extracted by the API service
+      // Create assistant message
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: response.message,
+        quick_actions: response.quick_actions,
+        suggested_functions: response.suggested_functions,
+        data: response.data,
+      };
 
-        // If image was uploaded and we got a product name, switch to product view
-        if (hasImage && detectedProductName) {
-          console.log('🖼️ Image uploaded with product detection:', detectedProductName);
-          setCurrentStage(1); // Switch to product search stage
-          setProductName(detectedProductName);
-        }
-        // Otherwise, update stage if backend returned one
-        else if (detectedStage !== undefined && detectedStage !== currentStage) {
-          console.log('🔄 Stage changed from', currentStage, 'to', detectedStage);
-          setCurrentStage(detectedStage);
-        }
+      const finalConversation: Conversation = {
+        ...updatedConversation,
+        messages: [...updatedConversation.messages, assistantMessage],
+        last_suggested_function: response.suggested_functions?.[0]?.function,
+      };
 
-        // Update summary if provided
-        if (detectedSummary) {
-          console.log('📝 Summary updated:', detectedSummary);
-          setConversationSummary(detectedSummary);
-        }
+      saveConversation(finalConversation);
+      setConversations(prev => prev.map(c => c.id === activeConversationId ? finalConversation : c));
 
-        // Update product name if provided (even without image)
-        if (detectedProductName && !hasImage) {
-          console.log('🏷️ Product Name updated:', detectedProductName);
-          setProductName(detectedProductName);
-        }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send message');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        // Update quick actions if provided
-        if (detectedQuickActions) {
-          console.log('⚡ Quick Actions received:', detectedQuickActions);
-          // Safety: Limit to max 4 actions
-          const limitedActions = detectedQuickActions.slice(0, 4);
-          setQuickActions(limitedActions);
-          if (detectedQuickActions.length > 4) {
-            console.warn(`⚠️ Truncated ${detectedQuickActions.length} actions to 4:`, detectedQuickActions);
+  const handleQuickAction = async (action: string) => {
+    // Check if it's a function suggestion
+    if (lastMessage?.role === 'assistant' && lastMessage.suggested_functions) {
+      const matchingFunction = lastMessage.suggested_functions.find(
+        f => f.function === action || action.toLowerCase().includes(f.function.toLowerCase())
+      );
+
+      if (matchingFunction) {
+        try {
+          if (matchingFunction.function === 'Get all categories') {
+            const categories = await getCategories();
+            toast.success(`Loaded ${categories.length} categories`);
+            // Show categories as quick actions or in a modal
+            return;
+          } else if (matchingFunction.function === 'Get all options') {
+            // Extract column from endpoint
+            const columnMatch = matchingFunction.endpoint.match(/column=([^&]+)/);
+            if (columnMatch) {
+              const options = await getOptions(columnMatch[1]);
+              toast.success(`Loaded ${options.length} options`);
+              return;
+            }
           }
+        } catch (error) {
+          toast.error('Failed to fetch data');
         }
+      }
+    }
 
-        // Use the accumulated fullResponse as the message content
-        // This is clean text without JSON structure
-        responseContent = fullResponse;
-
-        // Add assistant message with the extracted content
-        setConversations(prev => prev.map(conv =>
-          conv.id === activeConversationId
-            ? {
-                ...conv,
-                messages: [...conv.messages, {
-                  role: 'assistant',
-                  content: responseContent,
-                  timestamp: new Date()
-                }]
-              }
-            : conv
-        ));
-        setIsStreaming(false);
-        setCurrentStreamingMessage("");
-      },
-      (error) => {
-        // Error handling
-        setIsStreaming(false);
-        setCurrentStreamingMessage("");
-        toast.error(error || "Failed to send message, please retry");
-      },
-      apiUrl,
-      systemPrompt
-    );
-  };
-
-  const handleNewChat = () => {
-    const newId = Date.now().toString();
-    const newConversation: Conversation = {
-      id: newId,
-      title: "New Chat",
-      timestamp: "Now",
-      messages: [
-        {
-          role: 'assistant',
-          content: 'Hello! I\'m your AI shopping assistant. How can I help you today?',
-          timestamp: new Date(),
-        }
-      ]
-    };
-    setConversations(prev => [newConversation, ...prev]);
-    setActiveConversationId(newId);
-    setCurrentStage(0); // Reset to general conversation stage
-    setConversationSummary(""); // Reset summary
-    setProductName(""); // Reset product name
-    setQuickActions(categories); // Reset quick actions to initialized categories
-    setSelectedProductId(null); // Reset selected product
-    setSidebarOpen(false);
-  };
-
-  const handleSelectConversation = (id: string) => {
-    setActiveConversationId(id);
-  };
-
-  const handleQuickAction = (action: string) => {
-    // Clear quick actions when user clicks one
-    setQuickActions([]);
-    // Send the quick action as a message
+    // Otherwise, send as regular message
     handleSendMessage(action);
   };
 
-  const handleProductClick = (productId: number) => {
-    console.log('🖱️ Product clicked:', productId);
-    setSelectedProductId(productId);
-    setCurrentStage(2); // Transition to product detail stage
+  const handleProductClick = async (productId: number) => {
+    try {
+      setSelectedProductId(productId);
+      const productDetail = await getProductById(productId);
+      
+      // Update the products list with the detailed product
+      setSelectedProducts(prev => 
+        prev.map(p => p.id === productId ? { ...p, ...productDetail } : p)
+      );
+      setProductDetailMode(true);
+    } catch (error) {
+      toast.error('Failed to load product details');
+    }
   };
 
-  const handleBackToSearch = () => {
-    console.log('⬅️ Back to search');
+  const handleBackToList = () => {
     setSelectedProductId(null);
-    setCurrentStage(1); // Return to product search stage
+    setProductDetailMode(false);
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeConversationId={activeConversationId}
-        onNewChat={handleNewChat}
-        onSelectConversation={handleSelectConversation}
-        conversations={conversations}
-      />
+    <div className="flex h-screen w-full overflow-hidden bg-background">
+      {/* Left: Conversation List */}
+      <div className="w-64 hidden lg:block border-r">
+        <ConversationList
+          conversations={conversations}
+          activeConversationId={activeConversationId}
+          onSelectConversation={handleSelectConversation}
+          onNewConversation={handleNewConversation}
+          onDeleteConversation={handleDeleteConversation}
+          onRenameConversation={handleRenameConversation}
+        />
+      </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex relative z-10 border-r border-gray-200 min-w-0">
-        <div className="flex-1 flex flex-col min-w-0">
+      {/* Center: Chat Panel */}
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="border-b border-gray-200 p-2 sm:p-4 glass w-full">
-          <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <Button
-                onClick={() => setSidebarOpen(true)}
-                variant="ghost"
-                size="icon"
-                className="lg:hidden shrink-0"
-              >
-                <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
-              </Button>
-              <h1 className="text-sm sm:text-base md:text-lg font-semibold truncate">AI Shopping Assistant</h1>
-            </div>
-            <SettingsModal
-              apiUrl={apiUrl}
-              onApiUrlChange={setApiUrl}
-              currentStage={currentStage}
-              conversationSummary={conversationSummary}
-            />
-          </div>
+        <header className="border-b p-4 flex items-center justify-between">
+          <h1 className="text-lg font-semibold">AI Shopping Assistant</h1>
+          <SettingsModal apiUrl={apiUrl} onApiUrlChange={setApiUrl} />
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 w-full">
-          <div className="w-full sm:max-w-3xl sm:mx-auto space-y-3 sm:space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-6">
+          <div className="max-w-3xl mx-auto space-y-4">
             {messages.map((msg, idx) => (
-              <ChatMessage key={idx} {...msg} />
+              <ChatMessage key={idx} message={msg} />
             ))}
-            {isStreaming && currentStreamingMessage && (
-              <ChatMessage
-                role="assistant"
-                content={currentStreamingMessage}
-                timestamp={new Date()}
-              />
-            )}
-            {isStreaming && !currentStreamingMessage && <TypingIndicator />}
-            {isInitializing && messages.length === 1 && (
-              <div className="text-center py-4" role="status" aria-live="polite">
-                <p className="text-sm text-muted-foreground">Getting ready...</p>
-              </div>
-            )}
+            {isLoading && <TypingIndicator />}
             <div ref={messagesEndRef} />
           </div>
         </div>
 
-          {/* Quick Action Buttons */}
-          {(quickActions.length > 0 || isInitializing) && (
-            <QuickActionButtons
-              actions={quickActions}
-              onActionClick={handleQuickAction}
-              isLoading={isInitializing && !isInitialized}
-            />
-          )}
+        {/* Quick Actions */}
+        {quickActions.length > 0 && !isLoading && (
+          <QuickActionButtons
+            actions={quickActions}
+            onActionClick={handleQuickAction}
+          />
+        )}
 
-          {/* Input Area */}
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            disabled={isInitializing && !isInitialized}
+        {/* Input */}
+        <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+      </div>
+
+      {/* Right: Products Panel */}
+      {selectedProducts.length > 0 && (
+        <div className="w-96 hidden xl:block border-l">
+          <ProductsPanel
+            products={selectedProducts}
+            selectedProductId={selectedProductId}
+            detailMode={productDetailMode}
+            onProductClick={handleProductClick}
+            onBackToList={handleBackToList}
           />
         </div>
-
-        {/* Products Panel */}
-        <ProductsPanel
-          currentStage={currentStage}
-          productName={productName}
-          selectedProductId={selectedProductId}
-          onBackToSearch={handleBackToSearch}
-          onProductClick={handleProductClick}
-          apiUrl={apiUrl}
-          categories={categories}
-        />
-      </div>
+      )}
     </div>
   );
 };

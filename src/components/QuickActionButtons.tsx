@@ -1,51 +1,29 @@
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Zap } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface QuickActionButtonsProps {
   actions: string[];
   onActionClick: (action: string) => void;
-  isLoading?: boolean;
 }
 
-export const QuickActionButtons = ({
-  actions,
-  onActionClick,
-  isLoading = false
-}: QuickActionButtonsProps) => {
+export function QuickActionButtons({ actions, onActionClick }: QuickActionButtonsProps) {
+  if (actions.length === 0) return null;
+
   return (
-    <div
-      className="px-2 sm:px-4 py-3 border-t bg-background/95 backdrop-blur animate-in slide-in-from-bottom duration-200"
-      role="region"
-      aria-label="Quick action buttons"
-    >
-      <div className="w-full sm:max-w-3xl sm:mx-auto">
-        <div className="flex gap-2 overflow-x-auto pb-1 -webkit-overflow-scrolling-touch [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {isLoading ? (
-            // Show skeleton loading state
-            <>
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-8 w-24 flex-shrink-0 rounded-md" />
-              ))}
-            </>
-          ) : (
-            // Show actual buttons
-            actions.map((action, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                onClick={() => onActionClick(action)}
-                className="flex items-center gap-2 whitespace-nowrap flex-shrink-0"
-                aria-label={`Browse ${action}`}
-              >
-                <Zap className="h-4 w-4" />
-                {action}
-              </Button>
-            ))
-          )}
+    <div className="border-t px-4 py-3">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex flex-wrap gap-2">
+          {actions.slice(0, 4).map((action, index) => (
+            <Button
+              key={index}
+              onClick={() => onActionClick(action)}
+              variant="outline"
+              size="sm"
+            >
+              {action}
+            </Button>
+          ))}
         </div>
       </div>
     </div>
   );
-};
+}
