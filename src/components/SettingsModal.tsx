@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { API_URLS } from "@/config/api";
 
 interface SettingsModalProps {
@@ -25,6 +26,10 @@ export function SettingsModal({ apiUrl, onApiUrlChange }: SettingsModalProps) {
   const [status, setStatus] = useState<ConnectionStatus>('testing');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
+  const [customUrl, setCustomUrl] = useState(apiUrl);
+  const [useCustom, setUseCustom] = useState(
+    apiUrl !== API_URLS.LOCAL && apiUrl !== API_URLS.PRODUCTION
+  );
   const isLocal = apiUrl === API_URLS.LOCAL;
 
   const testConnection = async () => {
@@ -72,9 +77,38 @@ export function SettingsModal({ apiUrl, onApiUrlChange }: SettingsModalProps) {
     }
   }, [isOpen, apiUrl]);
 
+  useEffect(() => {
+    setCustomUrl(apiUrl);
+    setUseCustom(apiUrl !== API_URLS.LOCAL && apiUrl !== API_URLS.PRODUCTION);
+  }, [apiUrl]);
+
   const handleEnvironmentToggle = (checked: boolean) => {
+    if (useCustom) return; // Don't allow toggle when using custom URL
     const newUrl = checked ? API_URLS.LOCAL : API_URLS.PRODUCTION;
     onApiUrlChange(newUrl);
+  };
+
+  const handleCustomUrlChange = (value: string) => {
+    setCustomUrl(value);
+  };
+
+  const handleApplyCustomUrl = () => {
+    if (customUrl.trim()) {
+      onApiUrlChange(customUrl.trim());
+    }
+  };
+
+  const handleUseCustomToggle = (checked: boolean) => {
+    setUseCustom(checked);
+    if (!checked) {
+      // Switch back to local when disabling custom
+      onApiUrlChange(API_URLS.LOCAL);
+    } else {
+      // Apply custom URL when enabling
+      if (customUrl.trim()) {
+        onApiUrlChange(customUrl.trim());
+      }
+    }
   };
 
   const getStatusBadge = () => {
@@ -106,27 +140,58 @@ export function SettingsModal({ apiUrl, onApiUrlChange }: SettingsModalProps) {
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
-          {/* Environment Toggle */}
+          {/* Custom URL Toggle */}
           <div className="space-y-2 sm:space-y-3">
-            <Label className="text-sm sm:text-base font-semibold">Backend Environment</Label>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-muted rounded-lg">
-              <div className="space-y-1 flex-1 min-w-0">
-                <div className="font-medium text-sm sm:text-base">
-                  {isLocal ? 'Local Development' : 'Production'}
-                </div>
-                <div className="text-xs sm:text-sm text-muted-foreground font-mono break-all">
-                  {apiUrl}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
-                <span className="text-xs sm:text-sm text-muted-foreground">Local</span>
-                <Switch
-                  checked={isLocal}
-                  onCheckedChange={handleEnvironmentToggle}
-                />
-              </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm sm:text-base font-semibold">Custom Backend URL</Label>
+              <Switch
+                checked={useCustom}
+                onCheckedChange={handleUseCustomToggle}
+              />
             </div>
           </div>
+
+          {/* Environment Toggle or Custom URL Input */}
+          {!useCustom ? (
+            <div className="space-y-2 sm:space-y-3">
+              <Label className="text-sm sm:text-base font-semibold">Backend Environment</Label>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-muted rounded-lg">
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="font-medium text-sm sm:text-base">
+                    {isLocal ? 'Local Development' : 'Production'}
+                  </div>
+                  <div className="text-xs sm:text-sm text-muted-foreground font-mono break-all">
+                    {apiUrl}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
+                  <span className="text-xs sm:text-sm text-muted-foreground">Local</span>
+                  <Switch
+                    checked={isLocal}
+                    onCheckedChange={handleEnvironmentToggle}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 sm:space-y-3">
+              <Label className="text-sm sm:text-base font-semibold">Custom Endpoint URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={customUrl}
+                  onChange={(e) => handleCustomUrlChange(e.target.value)}
+                  placeholder="http://localhost:8000"
+                  className="font-mono text-xs sm:text-sm"
+                />
+                <Button onClick={handleApplyCustomUrl} size="sm">
+                  Apply
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Current: <span className="font-mono">{apiUrl}</span>
+              </p>
+            </div>
+          )}
 
           {/* Connection Status */}
           <div className="space-y-2 sm:space-y-3">
