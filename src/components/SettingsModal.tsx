@@ -13,21 +13,22 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { API_URLS } from "@/config/api";
-import { ConversationStage, STAGE_NAMES } from "@/config/prompts";
+import { Input } from "@/components/ui/input";
 
 interface SettingsModalProps {
   apiUrl: string;
   onApiUrlChange: (url: string) => void;
-  currentStage: ConversationStage;
   conversationSummary: string;
 }
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'testing' | 'mixed-content';
 
-export const SettingsModal = ({ apiUrl, onApiUrlChange, currentStage, conversationSummary }: SettingsModalProps) => {
+export const SettingsModal = ({ apiUrl, onApiUrlChange, conversationSummary }: SettingsModalProps) => {
   const [status, setStatus] = useState<ConnectionStatus>('testing');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
+  const [useCustom, setUseCustom] = useState(false);
+  const [customUrl, setCustomUrl] = useState(apiUrl);
   const isLocal = apiUrl === API_URLS.LOCAL;
 
   const testConnection = async () => {
@@ -75,9 +76,34 @@ export const SettingsModal = ({ apiUrl, onApiUrlChange, currentStage, conversati
     }
   }, [isOpen, apiUrl]);
 
+  useEffect(() => {
+    // Check if current URL is neither LOCAL nor PRODUCTION
+    const isCustomUrl = apiUrl !== API_URLS.LOCAL && apiUrl !== API_URLS.PRODUCTION;
+    setUseCustom(isCustomUrl);
+    setCustomUrl(apiUrl);
+  }, [apiUrl]);
+
   const handleEnvironmentToggle = (checked: boolean) => {
     const newUrl = checked ? API_URLS.LOCAL : API_URLS.PRODUCTION;
     onApiUrlChange(newUrl);
+  };
+
+  const handleCustomUrlChange = (value: string) => {
+    setCustomUrl(value);
+  };
+
+  const handleApplyCustomUrl = () => {
+    if (customUrl && customUrl.trim() !== '') {
+      onApiUrlChange(customUrl.trim());
+    }
+  };
+
+  const handleUseCustomToggle = (checked: boolean) => {
+    setUseCustom(checked);
+    if (!checked) {
+      // Reset to production when turning off custom
+      onApiUrlChange(API_URLS.PRODUCTION);
+    }
   };
 
   const getStatusBadge = () => {
@@ -109,26 +135,57 @@ export const SettingsModal = ({ apiUrl, onApiUrlChange, currentStage, conversati
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
-          {/* Environment Toggle */}
+          {/* Custom URL Toggle */}
           <div className="space-y-2 sm:space-y-3">
-            <Label className="text-sm sm:text-base font-semibold">Backend Environment</Label>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-muted rounded-lg">
-              <div className="space-y-1 flex-1 min-w-0">
-                <div className="font-medium text-sm sm:text-base">
-                  {isLocal ? 'Local Development' : 'Production'}
-                </div>
-                <div className="text-xs sm:text-sm text-muted-foreground font-mono break-all">
-                  {apiUrl}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
-                <span className="text-xs sm:text-sm text-muted-foreground">Local</span>
-                <Switch
-                  checked={isLocal}
-                  onCheckedChange={handleEnvironmentToggle}
-                />
-              </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm sm:text-base font-semibold">Custom Backend URL</Label>
+              <Switch
+                checked={useCustom}
+                onCheckedChange={handleUseCustomToggle}
+              />
             </div>
+
+            {useCustom ? (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={customUrl}
+                    onChange={(e) => handleCustomUrlChange(e.target.value)}
+                    placeholder="https://api.example.com"
+                    className="flex-1 font-mono text-xs sm:text-sm"
+                  />
+                  <Button
+                    onClick={handleApplyCustomUrl}
+                    size="sm"
+                    variant="default"
+                  >
+                    Apply
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter your custom backend URL
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-muted rounded-lg">
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="font-medium text-sm sm:text-base">
+                    {isLocal ? 'Local Development' : 'Production'}
+                  </div>
+                  <div className="text-xs sm:text-sm text-muted-foreground font-mono break-all">
+                    {apiUrl}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
+                  <span className="text-xs sm:text-sm text-muted-foreground">Local</span>
+                  <Switch
+                    checked={isLocal}
+                    onCheckedChange={handleEnvironmentToggle}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Connection Status */}
@@ -206,32 +263,17 @@ export const SettingsModal = ({ apiUrl, onApiUrlChange, currentStage, conversati
             </div>
           </div>
 
-          {/* Conversation Stage Debug */}
-          <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t">
-            <Label className="text-sm sm:text-base font-semibold">Conversation Stage (Debug)</Label>
-            <div className="p-3 sm:p-4 bg-muted rounded-lg">
-              <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <span className="text-xs sm:text-sm text-muted-foreground">Current Stage:</span>
-                <Badge variant="outline" className="text-sm sm:text-base">
-                  Stage {currentStage}
-                </Badge>
-              </div>
-              <div className="text-xs sm:text-sm font-medium mb-1 sm:mb-2">{STAGE_NAMES[currentStage]}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-3">
-                {currentStage === 0 && "Bot is in general conversation mode"}
-                {currentStage === 1 && "Bot is helping narrow down products"}
-                {currentStage === 2 && "Bot is providing detailed product information"}
-              </div>
-              {conversationSummary && (
-                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border">
-                  <div className="text-[10px] sm:text-xs text-muted-foreground mb-1">Summary:</div>
-                  <div className="text-xs sm:text-sm font-medium bg-background p-2 rounded border break-words">
-                    {conversationSummary}
-                  </div>
+          {/* Conversation Debug */}
+          {conversationSummary && (
+            <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t">
+              <Label className="text-sm sm:text-base font-semibold">Conversation Summary (Debug)</Label>
+              <div className="p-3 sm:p-4 bg-muted rounded-lg">
+                <div className="text-xs sm:text-sm font-medium bg-background p-2 rounded border break-words">
+                  {conversationSummary}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Debug Information */}
           <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t">

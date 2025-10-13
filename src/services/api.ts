@@ -1,5 +1,4 @@
 import { API_CONFIG, API_URLS } from '@/config/api';
-import { ConversationStage } from '@/config/prompts';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -7,10 +6,10 @@ export interface Message {
 }
 
 export interface StructuredResponse {
-  stage: ConversationStage;
+  product_category_decided: boolean;
   message: string;
   summary?: string;
-  product_name?: string;
+  category_name?: string;
   quick_actions?: string[];
   active_filters?: Record<string, string>;
 }
@@ -21,7 +20,7 @@ export async function sendChatMessage(
   image?: string,
   imageMediaType?: string,
   onChunk?: (chunk: string) => void,
-  onComplete?: (stage?: ConversationStage, summary?: string, productName?: string, quickActions?: string[], activeFilters?: Record<string, string>) => void,
+  onComplete?: (productCategoryDecided?: boolean, summary?: string, categoryName?: string, quickActions?: string[], activeFilters?: Record<string, string>) => void,
   onError?: (error: string) => void,
   apiUrl?: string,
   systemPrompt?: string
@@ -90,9 +89,9 @@ export async function sendChatMessage(
 
     // Extract content from the response
     let messageContent = '';
-    let detectedStage: ConversationStage | undefined;
+    let detectedProductCategoryDecided: boolean | undefined;
     let detectedSummary: string | undefined;
-    let detectedProductName: string | undefined;
+    let detectedCategoryName: string | undefined;
     let detectedQuickActions: string[] | undefined;
     let detectedActiveFilters: Record<string, string> | undefined;
 
@@ -109,9 +108,9 @@ export async function sendChatMessage(
         messageContent = structuredResponse.message || '';
 
         // Extract metadata
-        if (structuredResponse.stage !== undefined) {
-          detectedStage = structuredResponse.stage;
-          console.log('Detected Stage:', detectedStage);
+        if (structuredResponse.product_category_decided !== undefined) {
+          detectedProductCategoryDecided = structuredResponse.product_category_decided;
+          console.log('Detected Product Category Decided:', detectedProductCategoryDecided);
         }
 
         if (structuredResponse.summary) {
@@ -119,9 +118,9 @@ export async function sendChatMessage(
           console.log('Detected Summary:', detectedSummary);
         }
 
-        if (structuredResponse.product_name) {
-          detectedProductName = structuredResponse.product_name;
-          console.log('Detected Product Name:', detectedProductName);
+        if (structuredResponse.category_name) {
+          detectedCategoryName = structuredResponse.category_name;
+          console.log('Detected Category Name:', detectedCategoryName);
         }
 
         if (structuredResponse.quick_actions) {
@@ -132,23 +131,6 @@ export async function sendChatMessage(
         if (structuredResponse.active_filters) {
           detectedActiveFilters = structuredResponse.active_filters;
           console.log('Detected Active Filters:', detectedActiveFilters);
-        }
-
-        // VALIDATION: Check if AI mentions finding products but didn't set proper metadata
-        const foundProductsPattern = /I found (\d+)|found (\d+) (product|item|option|result)/i;
-        const mentionsProducts = foundProductsPattern.test(messageContent);
-
-        if (mentionsProducts) {
-          if (!detectedStage || detectedStage !== 1) {
-            console.warn('⚠️ AI VALIDATION WARNING: Message mentions finding products but stage is not 1');
-            console.warn('   Message:', messageContent);
-            console.warn('   Current stage:', detectedStage);
-          }
-          if (!detectedProductName || detectedProductName.trim() === '') {
-            console.warn('⚠️ AI VALIDATION WARNING: Message mentions finding products but product_name is not set');
-            console.warn('   Message:', messageContent);
-            console.warn('   Product name:', detectedProductName);
-          }
         }
 
         // Display the complete message at once
@@ -181,7 +163,7 @@ export async function sendChatMessage(
     console.groupEnd();
 
     // Call completion callback
-    onComplete?.(detectedStage, detectedSummary, detectedProductName, detectedQuickActions, detectedActiveFilters);
+    onComplete?.(detectedProductCategoryDecided, detectedSummary, detectedCategoryName, detectedQuickActions, detectedActiveFilters);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
     onError?.(errorMessage);

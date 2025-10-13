@@ -12,7 +12,7 @@ import { sendChatMessage, Message as ApiMessage } from "@/services/api";
 import { useInitialization } from "@/hooks/useInitialization";
 import { toast } from "sonner";
 import { API_CONFIG, API_URLS } from "@/config/api";
-import { ConversationStage, getSystemPrompt } from "@/config/prompts";
+import { getSystemPrompt } from "@/config/prompts";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -33,9 +33,10 @@ const Index = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("1");
-  const [currentStage, setCurrentStage] = useState<ConversationStage>(0);
+  const [productCategoryDecided, setProductCategoryDecided] = useState(false);
+  const [showProductDetail, setShowProductDetail] = useState(false);
   const [conversationSummary, setConversationSummary] = useState<string>("");
-  const [productName, setProductName] = useState<string>("");
+  const [categoryName, setCategoryName] = useState<string>("");
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [apiUrl, setApiUrl] = useState(() => {
@@ -73,10 +74,10 @@ const Index = () => {
 
   // Sync quick actions when categories are loaded
   useEffect(() => {
-    if (categories.length > 0 && currentStage === 0) {
+    if (categories.length > 0 && !productCategoryDecided) {
       setQuickActions(categories);
     }
-  }, [categories, currentStage]);
+  }, [categories, productCategoryDecided]);
 
   // Show error toast if initialization failed
   useEffect(() => {
@@ -138,9 +139,9 @@ const Index = () => {
     let fullResponse = '';
     let responseContent = '';
 
-    // Log current conversation stage
-    const systemPrompt = getSystemPrompt(currentStage, categories);
-    console.log('💬 Sending message with Stage:', currentStage, `(${systemPrompt.substring(0, 100)}...)`);
+    // Get system prompt
+    const systemPrompt = getSystemPrompt(categories);
+    console.log('💬 Sending message with categories:', categories);
 
     await sendChatMessage(
       message,
@@ -152,52 +153,32 @@ const Index = () => {
         fullResponse += chunk;
         setCurrentStreamingMessage(fullResponse);
       },
-      (detectedStage, detectedSummary, detectedProductName, detectedQuickActions, detectedActiveFilters) => {
+      (productDecided, detectedSummary, detectedCategoryName, detectedQuickActions, detectedActiveFilters) => {
         // Streaming complete - use the clean message content (fullResponse)
         // Metadata has already been extracted by the API service
 
-        // If image was uploaded and we got a product name, switch to product view
-        if (hasImage && detectedProductName) {
-          console.log('🖼️ Image uploaded with product detection:', detectedProductName);
-          setCurrentStage(1); // Switch to product search stage
-          setProductName(detectedProductName);
+        // If image was uploaded and we got a category name, show products
+        if (hasImage && detectedCategoryName) {
+          console.log('🖼️ Image uploaded with category:', detectedCategoryName);
+          setProductCategoryDecided(true);
+          setCategoryName(detectedCategoryName);
         }
-        // Otherwise, update stage if backend returned one
-        else if (detectedStage !== undefined && detectedStage !== currentStage) {
-          // STAGE REGRESSION PREVENTION
-          // Allow forward transitions: 0→1, 1→2
-          // Block backward transitions: 1→0, 2→1, 2→0
-          // Exception: Stage 2→1 is allowed via UI (back button), but AI should never suggest it
+        // Otherwise update based on backend response
+        else if (productDecided !== undefined) {
+          console.log('🔄 Product category decided:', productDecided);
+          setProductCategoryDecided(productDecided);
+        }
 
-          const isForwardTransition = detectedStage > currentStage;
-          const isBackwardTransition = detectedStage < currentStage;
-
-          if (isForwardTransition) {
-            // Allow forward progress
-            console.log('🔄 Stage changed from', currentStage, 'to', detectedStage);
-            setCurrentStage(detectedStage);
-          } else if (isBackwardTransition) {
-            // Block regression - AI should not go backwards
-            console.warn('⚠️ BLOCKED stage regression from', currentStage, 'to', detectedStage);
-            console.warn('   AI attempted to regress stage - this should not happen');
-            console.warn('   Keeping current stage:', currentStage);
-            // Keep the current stage, don't update
-          } else {
-            // Same stage, no change needed
-            console.log('✅ Stage unchanged:', currentStage);
-          }
+        // Update category name if provided (even without image)
+        if (detectedCategoryName && !hasImage) {
+          console.log('🏷️ Category Name updated:', detectedCategoryName);
+          setCategoryName(detectedCategoryName);
         }
 
         // Update summary if provided
         if (detectedSummary) {
           console.log('📝 Summary updated:', detectedSummary);
           setConversationSummary(detectedSummary);
-        }
-
-        // Update product name if provided (even without image)
-        if (detectedProductName && !hasImage) {
-          console.log('🏷️ Product Name updated:', detectedProductName);
-          setProductName(detectedProductName);
         }
 
         // Update quick actions if provided
@@ -264,9 +245,10 @@ const Index = () => {
     };
     setConversations(prev => [newConversation, ...prev]);
     setActiveConversationId(newId);
-    setCurrentStage(0); // Reset to general conversation stage
+    setProductCategoryDecided(false); // Reset to general conversation
+    setShowProductDetail(false); // Reset detail view
     setConversationSummary(""); // Reset summary
-    setProductName(""); // Reset product name
+    setCategoryName(""); // Reset category name
     setQuickActions(categories); // Reset quick actions to initialized categories
     setSelectedProductId(null); // Reset selected product
     setActiveFilters({}); // Reset filters
@@ -287,13 +269,13 @@ const Index = () => {
   const handleProductClick = (productId: number) => {
     console.log('🖱️ Product clicked:', productId);
     setSelectedProductId(productId);
-    setCurrentStage(2); // Transition to product detail stage
+    setShowProductDetail(true); // Show product detail
   };
 
   const handleBackToSearch = () => {
     console.log('⬅️ Back to search');
     setSelectedProductId(null);
-    setCurrentStage(1); // Return to product search stage
+    setShowProductDetail(false); // Hide product detail
   };
 
   return (
@@ -328,7 +310,6 @@ const Index = () => {
             <SettingsModal
               apiUrl={apiUrl}
               onApiUrlChange={setApiUrl}
-              currentStage={currentStage}
               conversationSummary={conversationSummary}
             />
           </div>
@@ -375,8 +356,9 @@ const Index = () => {
 
         {/* Products Panel */}
         <ProductsPanel
-          currentStage={currentStage}
-          productName={productName}
+          showPanel={productCategoryDecided}
+          showDetail={showProductDetail}
+          categoryName={categoryName}
           selectedProductId={selectedProductId}
           onBackToSearch={handleBackToSearch}
           onProductClick={handleProductClick}

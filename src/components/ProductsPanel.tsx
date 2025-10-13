@@ -3,13 +3,13 @@ import { ProductCard } from "./ProductCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Search, X } from "lucide-react";
-import { ConversationStage } from "@/config/prompts";
 import { Product, fetchProductsByName, getProductById, sortProducts } from "@/services/productApi";
 import { toast } from "sonner";
 
 interface ProductsPanelProps {
-  currentStage: ConversationStage;
-  productName: string;
+  showPanel: boolean;
+  showDetail: boolean;
+  categoryName: string;
   selectedProductId: number | null;
   onBackToSearch: () => void;
   onProductClick: (productId: number) => void;
@@ -21,8 +21,9 @@ interface ProductsPanelProps {
 }
 
 export const ProductsPanel = ({
-  currentStage,
-  productName,
+  showPanel,
+  showDetail,
+  categoryName,
   selectedProductId,
   onBackToSearch,
   onProductClick,
@@ -37,28 +38,28 @@ export const ProductsPanel = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch products when in Stage 1 and productName or filters change
+  // Fetch products when panel is shown and category is selected
   useEffect(() => {
-    if (currentStage === 1 && productName) {
-      console.log('🔍 Stage 1 detected with productName:', productName, 'and filters:', activeFilters, '(triggered by text or image search)');
+    if (showPanel && !showDetail && categoryName) {
+      console.log('🔍 Products panel shown with category:', categoryName, 'and filters:', activeFilters);
       fetchProducts();
     }
-  }, [currentStage, productName, activeFilters]);
+  }, [showPanel, showDetail, categoryName, activeFilters]);
 
-  // Fetch single product when in Stage 2
+  // Fetch single product when detail view is shown
   useEffect(() => {
-    if (currentStage === 2 && selectedProductId) {
+    if (showDetail && selectedProductId) {
       fetchProductDetails();
     }
-  }, [currentStage, selectedProductId]);
+  }, [showDetail, selectedProductId]);
 
   const fetchProducts = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log('🔍 Fetching products for:', productName, 'with categories:', categories, 'and filters:', activeFilters);
-      const fetchedProducts = await fetchProductsByName(productName, apiUrl, categories, activeFilters);
+      console.log('🔍 Fetching products for:', categoryName, 'with categories:', categories, 'and filters:', activeFilters);
+      const fetchedProducts = await fetchProductsByName(categoryName, apiUrl, categories, activeFilters);
 
       // Sort by popular for better user experience
       const sortedProducts = sortProducts(fetchedProducts, 'popular');
@@ -97,13 +98,13 @@ export const ProductsPanel = ({
   // Empty product cards for loading state
   const emptyCards = Array.from({ length: 6 }, (_, i) => i);
 
-  // Hide panel in Stage 0
-  if (currentStage === 0) {
+  // Hide panel when not needed
+  if (!showPanel) {
     return null;
   }
 
-  // Stage 2: Product Detail View
-  if (currentStage === 2) {
+  // Product Detail View
+  if (showDetail) {
     return (
       <div className="hidden lg:flex lg:w-80 xl:w-96 border-l flex-col h-full animate-in slide-in-from-right duration-300">
         {/* Header with Back Button */}
@@ -228,19 +229,19 @@ export const ProductsPanel = ({
     );
   }
 
-  // Stage 1: Product Cards View
+  // Product Cards View
   const hasFilters = Object.keys(activeFilters).length > 0;
 
   return (
     <div className="hidden lg:flex lg:w-80 xl:w-96 border-l flex-col h-full animate-in slide-in-from-right duration-300">
       <div className="border-b p-4">
-        {currentStage === 1 && productName ? (
+        {categoryName ? (
           <>
             <div className="flex items-center gap-2 mb-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <h2 className="font-semibold text-lg">Searching for</h2>
             </div>
-            <p className="text-base font-medium text-primary">"{productName}"</p>
+            <p className="text-base font-medium text-primary">"{categoryName}"</p>
             {!loading && products.length > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
                 {products.length} products found
@@ -321,7 +322,7 @@ export const ProductsPanel = ({
             // No products found
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">
-                No products found for "{productName}"
+                No products found for "{categoryName}"
               </p>
             </div>
           )}
