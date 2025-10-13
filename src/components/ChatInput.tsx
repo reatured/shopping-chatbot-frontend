@@ -83,9 +83,9 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-gray-200 p-3 sm:p-4 glass">
+    <div className="border-t border-gray-200 p-2 sm:p-3 md:p-4 glass w-full">
       {selectedImage && (
-        <div className="mb-2 sm:mb-3 flex items-start gap-2 p-2 glass rounded-lg w-fit max-w-full">
+        <div className="mb-2 flex items-start gap-2 p-2 glass rounded-lg w-fit max-w-full">
           <div className="relative shrink-0">
             <img
               src={selectedImage.preview}
@@ -112,7 +112,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
         </div>
       )}
 
-      <div className="flex items-end gap-1.5 sm:gap-2">
+      <div className="flex items-end gap-1 sm:gap-2 w-full min-w-0">
         <input
           type="file"
           ref={fileInputRef}
@@ -129,7 +129,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           className="glass-hover flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
           disabled={disabled}
         >
-          <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+          <Camera className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
         </Button>
 
         <textarea
@@ -137,7 +137,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Ask about products..."
-          className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-400 min-h-[40px] sm:min-h-[48px] max-h-[100px] sm:max-h-[120px]"
+          className="flex-1 min-w-0 bg-white border border-gray-300 rounded-lg px-2 py-2 sm:px-3 sm:py-2.5 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-400 min-h-[36px] sm:min-h-[44px] max-h-[100px] sm:max-h-[120px]"
           disabled={disabled}
           rows={1}
         />
@@ -148,7 +148,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           className="flex-shrink-0 bg-gray-800 hover:bg-gray-900 text-white h-9 w-9 sm:h-10 sm:w-10"
           size="icon"
         >
-          <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+          <Send className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
         </Button>
       </div>
     </div>

@@ -291,8 +291,8 @@ const Index = () => {
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex relative z-10 border-r border-gray-200">
-        <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex relative z-10 border-r border-gray-200 min-w-0">
+        <div className="flex-1 flex flex-col w-full min-w-0">
           {/* Header */}
         <header className="border-b border-gray-200 p-3 sm:p-4 glass">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
