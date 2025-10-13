@@ -52,6 +52,10 @@ Contextual quick action buttons accelerate follow-up requests during product con
 Upload an image to find visually similar products from the catalog.  
 ![Image Search](./Image/Image%20Search.png)
 
+**Image Search 2**  
+Another example of visual search results returned from an uploaded image.  
+![Image Search 2](./Image/Image%20Search%202.png)
+
 ---
 
 ## Tech Stack
