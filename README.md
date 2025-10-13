@@ -34,7 +34,7 @@ AI-powered product filtering to refine results by attributes and preferences.
 
 **Clarification Questions**  
 AI asks clarifying questions to better understand the user’s needs before recommending.  
-![Clarification Questions](./Image/Clarification%20questions%20from%20AI%20%20.png)
+![Clarification Questions](./Image/Clarification%20questions%20from%20AI%20.png)
 
 **Product Results from Custom Database**  
 Products are retrieved from a custom database to ensure accurate, up-to-date results.  
