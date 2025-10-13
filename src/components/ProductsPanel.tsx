@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ProductCard } from "./ProductCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, X } from "lucide-react";
 import { ConversationStage } from "@/config/prompts";
 import { Product, fetchProductsByName, getProductById, sortProducts } from "@/services/productApi";
 import { toast } from "sonner";
@@ -15,6 +15,9 @@ interface ProductsPanelProps {
   onProductClick: (productId: number) => void;
   apiUrl?: string;
   categories?: string[];
+  activeFilters?: Record<string, string>;
+  onRemoveFilter?: (filterKey: string) => void;
+  onClearFilters?: () => void;
 }
 
 export const ProductsPanel = ({
@@ -24,20 +27,23 @@ export const ProductsPanel = ({
   onBackToSearch,
   onProductClick,
   apiUrl,
-  categories = ['car', 'backpack']
+  categories = ['car', 'backpack'],
+  activeFilters = {},
+  onRemoveFilter,
+  onClearFilters
 }: ProductsPanelProps) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch products when in Stage 1 and productName changes
+  // Fetch products when in Stage 1 and productName or filters change
   useEffect(() => {
     if (currentStage === 1 && productName) {
-      console.log('🔍 Stage 1 detected with productName:', productName, '(triggered by text or image search)');
+      console.log('🔍 Stage 1 detected with productName:', productName, 'and filters:', activeFilters, '(triggered by text or image search)');
       fetchProducts();
     }
-  }, [currentStage, productName]);
+  }, [currentStage, productName, activeFilters]);
 
   // Fetch single product when in Stage 2
   useEffect(() => {
@@ -51,8 +57,8 @@ export const ProductsPanel = ({
     setError(null);
 
     try {
-      console.log('🔍 Fetching products for:', productName, 'with categories:', categories);
-      const fetchedProducts = await fetchProductsByName(productName, apiUrl, categories);
+      console.log('🔍 Fetching products for:', productName, 'with categories:', categories, 'and filters:', activeFilters);
+      const fetchedProducts = await fetchProductsByName(productName, apiUrl, categories, activeFilters);
 
       // Sort by popular for better user experience
       const sortedProducts = sortProducts(fetchedProducts, 'popular');
@@ -223,6 +229,8 @@ export const ProductsPanel = ({
   }
 
   // Stage 1: Product Cards View
+  const hasFilters = Object.keys(activeFilters).length > 0;
+
   return (
     <div className="hidden lg:flex lg:w-80 xl:w-96 border-l flex-col h-full animate-in slide-in-from-right duration-300">
       <div className="border-b p-4">
@@ -237,6 +245,45 @@ export const ProductsPanel = ({
               <p className="text-xs text-muted-foreground mt-1">
                 {products.length} products found
               </p>
+            )}
+
+            {/* Active Filters */}
+            {hasFilters && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">Active Filters:</p>
+                  {onClearFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onClearFilters}
+                      className="h-6 text-xs"
+                    >
+                      Clear All
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(activeFilters).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-md text-xs"
+                    >
+                      <span className="font-medium capitalize">{key}:</span>
+                      <span>{value}</span>
+                      {onRemoveFilter && (
+                        <button
+                          onClick={() => onRemoveFilter(key)}
+                          className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                          aria-label={`Remove ${key} filter`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </>
         ) : (

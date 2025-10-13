@@ -31,21 +31,25 @@ export interface SearchResponse {
 }
 
 /**
- * Get products with optional category and color filters
+ * Get products with optional filters (supports any field)
  */
 export async function getProducts(
-  filters?: {
-    category?: 'car' | 'backpack';
-    color?: string;
-  },
+  filters?: Record<string, string>,
   apiUrl?: string
 ): Promise<Product[]> {
   try {
     const baseUrl = apiUrl || localStorage.getItem('api_url') || API_URLS.PRODUCTION;
 
     const params = new URLSearchParams();
-    if (filters?.category) params.append('category', filters.category);
-    if (filters?.color) params.append('color', filters.color);
+
+    // Add all filters dynamically
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) {
+          params.append(key, value);
+        }
+      });
+    }
 
     const queryString = params.toString() ? `?${params.toString()}` : '';
     const response = await fetch(`${baseUrl}/api/products${queryString}`);
@@ -68,24 +72,12 @@ export async function getProducts(
  */
 export async function getProductsByCategory(
   category: 'car' | 'backpack',
-  apiUrl?: string
+  apiUrl?: string,
+  additionalFilters?: Record<string, string>
 ): Promise<Product[]> {
-  try {
-    const baseUrl = apiUrl || localStorage.getItem('api_url') || API_URLS.PRODUCTION;
-
-    // Use the new dedicated products endpoint with category filter
-    const response = await fetch(`${baseUrl}/api/products?category=${category}`);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data: ProductsResponse = await response.json();
-    return data.products;
-  } catch (error) {
-    console.error('Error fetching products by category:', error);
-    throw error;
-  }
+  // Combine category with additional filters
+  const filters = { category, ...additionalFilters };
+  return getProducts(filters, apiUrl);
 }
 
 /**
@@ -145,11 +137,13 @@ export async function getProductById(
  * @param productName - Product name or category from AI
  * @param apiUrl - Optional API URL
  * @param availableCategories - Dynamic categories from backend (default: ['car', 'backpack'])
+ * @param additionalFilters - Additional filters to apply (e.g., {color: 'blue', brand: 'Nike'})
  */
 export async function fetchProductsByName(
   productName: string,
   apiUrl?: string,
-  availableCategories: string[] = ['car', 'backpack']
+  availableCategories: string[] = ['car', 'backpack'],
+  additionalFilters?: Record<string, string>
 ): Promise<Product[]> {
   const lowerName = productName.toLowerCase();
 
@@ -186,8 +180,8 @@ export async function fetchProductsByName(
 
   if (isJustCategory) {
     // General category view - get all products in category
-    console.log(`📦 Fetching all products for category: ${category}`);
-    return getProductsByCategory(category as any, apiUrl);
+    console.log(`📦 Fetching all products for category: ${category}`, additionalFilters ? `with filters: ${JSON.stringify(additionalFilters)}` : '');
+    return getProductsByCategory(category as any, apiUrl, additionalFilters);
   } else {
     // Specific search - extract search terms by removing category names
     let searchQuery = normalizedName;
@@ -202,12 +196,13 @@ export async function fetchProductsByName(
 
     if (searchQuery) {
       // Search with specific terms within the category
-      console.log(`🔎 Searching for "${searchQuery}" in category "${category}"`);
+      console.log(`🔎 Searching for "${searchQuery}" in category "${category}"`, additionalFilters ? `with filters: ${JSON.stringify(additionalFilters)}` : '');
+      // Note: searchProducts doesn't support additional filters yet, but we log them for future enhancement
       return searchProducts(searchQuery, category as any, apiUrl);
     } else {
       // Fallback to category browse
-      console.log(`📦 Fallback: Fetching all products for category: ${category}`);
-      return getProductsByCategory(category as any, apiUrl);
+      console.log(`📦 Fallback: Fetching all products for category: ${category}`, additionalFilters ? `with filters: ${JSON.stringify(additionalFilters)}` : '');
+      return getProductsByCategory(category as any, apiUrl, additionalFilters);
     }
   }
 }

@@ -37,6 +37,7 @@ const Index = () => {
   const [conversationSummary, setConversationSummary] = useState<string>("");
   const [productName, setProductName] = useState<string>("");
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [apiUrl, setApiUrl] = useState(() => {
     return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   });
@@ -151,7 +152,7 @@ const Index = () => {
         fullResponse += chunk;
         setCurrentStreamingMessage(fullResponse);
       },
-      (detectedStage, detectedSummary, detectedProductName, detectedQuickActions) => {
+      (detectedStage, detectedSummary, detectedProductName, detectedQuickActions, detectedActiveFilters) => {
         // Streaming complete - use the clean message content (fullResponse)
         // Metadata has already been extracted by the API service
 
@@ -188,6 +189,12 @@ const Index = () => {
           if (detectedQuickActions.length > 4) {
             console.warn(`⚠️ Truncated ${detectedQuickActions.length} actions to 4:`, detectedQuickActions);
           }
+        }
+
+        // Update active filters if provided
+        if (detectedActiveFilters) {
+          console.log('🔍 Active Filters updated:', detectedActiveFilters);
+          setActiveFilters(detectedActiveFilters);
         }
 
         // Use the accumulated fullResponse as the message content
@@ -242,6 +249,7 @@ const Index = () => {
     setProductName(""); // Reset product name
     setQuickActions(categories); // Reset quick actions to initialized categories
     setSelectedProductId(null); // Reset selected product
+    setActiveFilters({}); // Reset filters
     setSidebarOpen(false);
   };
 
@@ -354,6 +362,13 @@ const Index = () => {
           onProductClick={handleProductClick}
           apiUrl={apiUrl}
           categories={categories}
+          activeFilters={activeFilters}
+          onRemoveFilter={(filterKey) => {
+            const newFilters = { ...activeFilters };
+            delete newFilters[filterKey];
+            setActiveFilters(newFilters);
+          }}
+          onClearFilters={() => setActiveFilters({})}
         />
       </div>
     </div>

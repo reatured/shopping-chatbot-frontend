@@ -12,6 +12,7 @@ export interface StructuredResponse {
   summary?: string;
   product_name?: string;
   quick_actions?: string[];
+  active_filters?: Record<string, string>;
 }
 
 export async function sendChatMessage(
@@ -20,7 +21,7 @@ export async function sendChatMessage(
   image?: string,
   imageMediaType?: string,
   onChunk?: (chunk: string) => void,
-  onComplete?: (stage?: ConversationStage, summary?: string, productName?: string, quickActions?: string[]) => void,
+  onComplete?: (stage?: ConversationStage, summary?: string, productName?: string, quickActions?: string[], activeFilters?: Record<string, string>) => void,
   onError?: (error: string) => void,
   apiUrl?: string,
   systemPrompt?: string
@@ -93,6 +94,7 @@ export async function sendChatMessage(
     let detectedSummary: string | undefined;
     let detectedProductName: string | undefined;
     let detectedQuickActions: string[] | undefined;
+    let detectedActiveFilters: Record<string, string> | undefined;
 
     if (responseData.type === 'complete') {
       // Backend returned a complete response
@@ -127,6 +129,28 @@ export async function sendChatMessage(
           console.log('Detected Quick Actions:', detectedQuickActions);
         }
 
+        if (structuredResponse.active_filters) {
+          detectedActiveFilters = structuredResponse.active_filters;
+          console.log('Detected Active Filters:', detectedActiveFilters);
+        }
+
+        // VALIDATION: Check if AI mentions finding products but didn't set proper metadata
+        const foundProductsPattern = /I found (\d+)|found (\d+) (product|item|option|result)/i;
+        const mentionsProducts = foundProductsPattern.test(messageContent);
+
+        if (mentionsProducts) {
+          if (!detectedStage || detectedStage !== 1) {
+            console.warn('⚠️ AI VALIDATION WARNING: Message mentions finding products but stage is not 1');
+            console.warn('   Message:', messageContent);
+            console.warn('   Current stage:', detectedStage);
+          }
+          if (!detectedProductName || detectedProductName.trim() === '') {
+            console.warn('⚠️ AI VALIDATION WARNING: Message mentions finding products but product_name is not set');
+            console.warn('   Message:', messageContent);
+            console.warn('   Product name:', detectedProductName);
+          }
+        }
+
         // Display the complete message at once
         if (messageContent && onChunk) {
           onChunk(messageContent);
@@ -157,7 +181,7 @@ export async function sendChatMessage(
     console.groupEnd();
 
     // Call completion callback
-    onComplete?.(detectedStage, detectedSummary, detectedProductName, detectedQuickActions);
+    onComplete?.(detectedStage, detectedSummary, detectedProductName, detectedQuickActions, detectedActiveFilters);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
     onError?.(errorMessage);
