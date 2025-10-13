@@ -164,8 +164,28 @@ const Index = () => {
         }
         // Otherwise, update stage if backend returned one
         else if (detectedStage !== undefined && detectedStage !== currentStage) {
-          console.log('🔄 Stage changed from', currentStage, 'to', detectedStage);
-          setCurrentStage(detectedStage);
+          // STAGE REGRESSION PREVENTION
+          // Allow forward transitions: 0→1, 1→2
+          // Block backward transitions: 1→0, 2→1, 2→0
+          // Exception: Stage 2→1 is allowed via UI (back button), but AI should never suggest it
+
+          const isForwardTransition = detectedStage > currentStage;
+          const isBackwardTransition = detectedStage < currentStage;
+
+          if (isForwardTransition) {
+            // Allow forward progress
+            console.log('🔄 Stage changed from', currentStage, 'to', detectedStage);
+            setCurrentStage(detectedStage);
+          } else if (isBackwardTransition) {
+            // Block regression - AI should not go backwards
+            console.warn('⚠️ BLOCKED stage regression from', currentStage, 'to', detectedStage);
+            console.warn('   AI attempted to regress stage - this should not happen');
+            console.warn('   Keeping current stage:', currentStage);
+            // Keep the current stage, don't update
+          } else {
+            // Same stage, no change needed
+            console.log('✅ Stage unchanged:', currentStage);
+          }
         }
 
         // Update summary if provided

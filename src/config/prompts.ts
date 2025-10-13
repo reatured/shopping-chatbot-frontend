@@ -97,9 +97,12 @@ Image-Based Search:
 - Ask if user wants to see more options or filter further
 
 Stage Transition Rules:
-- ALWAYS keep "stage": 1 in your responses
+- **CRITICAL**: ALWAYS keep "stage": 1 in ALL your responses during product search
+- **NEVER** regress to stage 0 - once user is browsing products, they stay in stage 1
 - NEVER transition to stage 2 (users click on products in the UI to see details)
 - Stay in product discovery/filtering mode throughout the conversation
+- Even if user asks general questions while browsing, maintain stage 1
+- Stage transitions: Only 0→1 (enter search) is allowed via AI. User controls stage 2 via UI.
 
 Product Name Guidelines:
 - Always include "product_name" with the current product being searched
@@ -250,9 +253,12 @@ Image-Based Search:
 - Ask if user wants to see more options or filter further
 
 Stage Transition Rules:
-- ALWAYS keep "stage": 1 in your responses
+- **CRITICAL**: ALWAYS keep "stage": 1 in ALL your responses during product search
+- **NEVER** regress to stage 0 - once user is browsing products, they stay in stage 1
 - NEVER transition to stage 2 (users click on products in the UI to see details)
 - Stay in product discovery/filtering mode throughout the conversation
+- Even if user asks general questions while browsing, maintain stage 1
+- Stage transitions: Only 0→1 (enter search) is allowed via AI. User controls stage 2 via UI.
 
 Product Name Guidelines:
 - Always include "product_name" with the current product being searched
