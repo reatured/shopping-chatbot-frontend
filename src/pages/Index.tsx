@@ -36,6 +36,7 @@ const Index = () => {
   const messages = activeConversation?.messages || [];
   const lastMessage = messages[messages.length - 1];
   const quickActions = lastMessage?.role === 'assistant' ? lastMessage.quick_actions || [] : [];
+  const facets = lastMessage?.role === 'assistant' ? lastMessage.data?.facets : undefined;
 
   // Load conversations on mount
   useEffect(() => {
@@ -244,6 +245,12 @@ const Index = () => {
     setProductDetailMode(false);
   };
 
+  const handleOptionClick = (column: string, option: string) => {
+    // When user clicks an option from the OptionsBar, send it as a new message
+    const query = `Show ${column}: ${option}`;
+    handleSendMessage(query);
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Left: Conversation List */}
@@ -296,8 +303,10 @@ const Index = () => {
             products={selectedProducts}
             selectedProductId={selectedProductId}
             detailMode={productDetailMode}
+            facets={facets}
             onProductClick={handleProductClick}
             onBackToList={handleBackToList}
+            onOptionClick={handleOptionClick}
           />
         </div>
       )}

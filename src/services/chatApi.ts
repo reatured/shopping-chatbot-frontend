@@ -1,5 +1,6 @@
 import { API_CONFIG } from '@/config/api';
 import { Message } from '@/utils/storage';
+import { validateAndSanitize, ChatResponse as ValidatedChatResponse } from '@/utils/responseValidator';
 
 export interface ChatRequest {
   client_conversation_id: string;
@@ -8,24 +9,7 @@ export interface ChatRequest {
   last_suggested_function?: string;
 }
 
-export interface ChatResponse {
-  stage: 0 | 1 | 2;
-  message: string;
-  summary: string;
-  product_name: string;
-  quick_actions: string[];
-  suggested_functions?: Array<{
-    function: string;
-    endpoint: string;
-    method: string;
-  }>;
-  data?: {
-    mode: 'list' | 'detail';
-    items?: any[];
-    total?: number;
-    facets?: Record<string, string[]>;
-  };
-}
+export type ChatResponse = ValidatedChatResponse;
 
 export async function sendChatMessage(
   conversationId: string,
@@ -33,7 +17,7 @@ export async function sendChatMessage(
   lastSuggestedFunction?: string
 ): Promise<ChatResponse> {
   const baseUrl = localStorage.getItem('api_url') || API_CONFIG.BASE_URL;
-  
+
   const requestBody: ChatRequest = {
     client_conversation_id: conversationId,
     messages: messages.map(m => ({
@@ -60,40 +44,55 @@ export async function sendChatMessage(
     throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
   }
 
-  return response.json();
+  const rawResponse = await response.json();
+
+  // Validate and sanitize response
+  const { response: validatedResponse, validation } = validateAndSanitize(rawResponse);
+
+  // Log warnings in development
+  if (validation.warnings.length > 0 && import.meta.env.DEV) {
+    console.warn('Chat response validation warnings:', validation.warnings);
+  }
+
+  // Log errors in development
+  if (!validation.isValid && import.meta.env.DEV) {
+    console.error('Chat response validation errors:', validation.errors);
+  }
+
+  return validatedResponse;
 }
 
 export async function getCategories(): Promise<string[]> {
   const baseUrl = localStorage.getItem('api_url') || API_CONFIG.BASE_URL;
-  
+
   const response = await fetch(`${baseUrl}${API_CONFIG.ENDPOINTS.META_CATEGORIES}`);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch categories: ${response.status}`);
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // Backend returns { categories: [...], updated_at: "..." }
+  return data.categories || [];
 }
 
 export async function getOptions(column: string): Promise<string[]> {
   const baseUrl = localStorage.getItem('api_url') || API_CONFIG.BASE_URL;
-  
+
   const response = await fetch(
     `${baseUrl}${API_CONFIG.ENDPOINTS.META_OPTIONS}?column=${encodeURIComponent(column)}`
   );
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch options: ${response.status}`);
   }
 
-  const options = await response.json();
-  
-  // Cap at 4, append "More" if there are more
-  if (Array.isArray(options) && options.length > 4) {
-    return [...options.slice(0, 4), 'More'];
-  }
-  
-  return options;
+  const data = await response.json();
+
+  // Backend returns { column: "...", options: [...], updated_at: "..." }
+  // Backend already caps at 4 and appends "More" if needed
+  return data.options || [];
 }
 
 export async function getProductById(id: number): Promise<any> {
