@@ -20,8 +20,20 @@ export async function sendChatMessage(
   formData.append('message', combinedMessage);
 
   if (image && imageMediaType) {
-    formData.append('image', image);
-    formData.append('image_media_type', imageMediaType);
+    // Convert base64 string to Blob for proper file upload
+    const byteCharacters = atob(image);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: imageMediaType });
+
+    // Create a File object from the Blob with a proper filename
+    const extension = imageMediaType.split('/')[1] || 'jpg';
+    const file = new File([blob], `upload.${extension}`, { type: imageMediaType });
+
+    formData.append('image', file);
   }
 
   // === Enhanced Logging ===
@@ -33,14 +45,19 @@ export async function sendChatMessage(
     console.log('System Prompt:', systemPrompt);
     console.log('Combined Message:', combinedMessage);
   }
-  if (image) {
-    console.log('Image:', imageMediaType, `(${image.substring(0, 50)}...)`);
+  if (image && imageMediaType) {
+    const imageFile = formData.get('image') as File;
+    console.log('Image File:', {
+      name: imageFile.name,
+      type: imageFile.type,
+      size: `${(imageFile.size / 1024).toFixed(2)} KB`
+    });
   }
 
   // Generate curl command for debugging
   let curlCommand = `curl -X POST '${endpoint}' \\\n  -F 'message=${combinedMessage.replace(/'/g, "'\\''")}' \\`;
   if (image && imageMediaType) {
-    curlCommand += `\n  -F 'image=${image.substring(0, 50)}...' \\\n  -F 'image_media_type=${imageMediaType}'`;
+    curlCommand += `\n  -F 'image=@upload.${imageMediaType.split('/')[1] || 'jpg'}'`;
   } else {
     curlCommand = curlCommand.slice(0, -2); // Remove trailing backslash
   }

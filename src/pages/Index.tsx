@@ -93,9 +93,13 @@ const Index = () => {
 
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
     // 1) 先把用户消息落地
+    // Convert base64 to data URL for display if image is provided
+    const imageDataUrl = image && imageMediaType ? `data:${imageMediaType};base64,${image}` : undefined;
+
     const userMessage: Message = {
       role: 'user',
       content: message,
+      image: imageDataUrl,
       timestamp: new Date(),
     };
 
