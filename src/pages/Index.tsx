@@ -6,13 +6,13 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { SettingsModal } from "@/components/SettingsModal";
-import { ProductsPanel } from "@/components/ProductsPanel";
 import { QuickActionButtons } from "@/components/QuickActionButtons";
-import { sendChatMessage, Message as ApiMessage } from "@/services/api";
+import { sendChatMessage } from "@/services/api";
 import { useInitialization } from "@/hooks/useInitialization";
 import { toast } from "sonner";
-import { API_CONFIG, API_URLS } from "@/config/api";
-import { getSystemPrompt } from "@/config/prompts";
+import { API_URLS } from "@/config/api";
+import { DEFAULT_SYSTEM_PROMPT } from "@/config/prompts";
+import { parseChatResponse, ChatResponseParseError } from "@/utils/chatResponse";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -30,21 +30,15 @@ interface Conversation {
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [currentStreamingMessage, setCurrentStreamingMessage] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("1");
-  const [productCategoryDecided, setProductCategoryDecided] = useState(false);
-  const [showProductDetail, setShowProductDetail] = useState(false);
-  const [conversationSummary, setConversationSummary] = useState<string>("");
-  const [categoryName, setCategoryName] = useState<string>("");
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [apiUrl, setApiUrl] = useState(() => {
     return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   });
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
+  const [conversationSummary, setConversationSummary] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize categories from backend
+  // 初始化分类（仅用于 Quick Actions，可选）
   const {
     isLoading: isInitializing,
     categories,
@@ -52,8 +46,8 @@ const Index = () => {
     isInitialized
   } = useInitialization(apiUrl);
 
-  // Use categories from initialization as quick actions for new conversations
   const [quickActions, setQuickActions] = useState<string[]>(categories);
+
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: "1",
@@ -72,14 +66,14 @@ const Index = () => {
   const activeConversation = conversations.find(c => c.id === activeConversationId);
   const messages = activeConversation?.messages || [];
 
-  // Sync quick actions when categories are loaded
+  // 同步 Quick Actions
   useEffect(() => {
-    if (categories.length > 0 && !productCategoryDecided) {
+    if (categories.length > 0) {
       setQuickActions(categories);
     }
-  }, [categories, productCategoryDecided]);
+  }, [categories]);
 
-  // Show error toast if initialization failed
+  // 初始化失败提示（不影响最简 chat）
   useEffect(() => {
     if (initError) {
       toast.error('Connecting to server...', {
@@ -95,138 +89,93 @@ const Index = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, currentStreamingMessage]);
+  }, [messages]);
 
   const handleSendMessage = async (message: string, image?: string, imageMediaType?: string) => {
-    // Track if this message has an image
-    const hasImage = !!image;
-
-    // Add user message
+    // 1) 先把用户消息落地
     const userMessage: Message = {
       role: 'user',
       content: message,
-      image: image ? `data:${imageMediaType};base64,${image}` : undefined,
       timestamp: new Date(),
     };
-    
-    // Update conversations
-    setConversations(prev => prev.map(conv => 
-      conv.id === activeConversationId 
+
+    setConversations(prev => prev.map(conv =>
+      conv.id === activeConversationId
         ? { ...conv, messages: [...conv.messages, userMessage] }
         : conv
     ));
 
-    // Update conversation title with first message
-    if (messages.length === 1) {
+    // 2) 若是该会话第一条"用户消息"，更新会话标题
+    const userMsgCount = (activeConversation?.messages || []).filter(m => m.role === 'user').length;
+    if (userMsgCount === 0) {
       const title = message.slice(0, 30) + (message.length > 30 ? '...' : '');
-      setConversations(prev => prev.map(conv => 
-        conv.id === activeConversationId 
-          ? { ...conv, title }
-          : conv
+      setConversations(prev => prev.map(conv =>
+        conv.id === activeConversationId ? { ...conv, title } : conv
       ));
     }
 
-    // Start streaming
-    setIsStreaming(true);
-    setCurrentStreamingMessage("");
+    // 3) 发送消息，支持系统提示和图片
+    try {
+      const replyText = await sendChatMessage(
+        message,
+        apiUrl,
+        systemPrompt || undefined,
+        image,
+        imageMediaType
+      );
 
-    // Convert conversation history to API format
-    const conversationHistory: ApiMessage[] = messages.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
+      // Parse the nested JSON response
+      try {
+        const parsedData = parseChatResponse(replyText);
 
-    let fullResponse = '';
-    let responseContent = '';
+        // Create assistant message with parsed content
+        const assistantMsg: Message = {
+          role: 'assistant',
+          content: parsedData.message,
+          timestamp: new Date(),
+        };
 
-    // Get system prompt
-    const systemPrompt = getSystemPrompt(categories);
-    console.log('💬 Sending message with categories:', categories);
-
-    await sendChatMessage(
-      message,
-      conversationHistory,
-      image,
-      imageMediaType,
-      (chunk) => {
-        // Update streaming message
-        fullResponse += chunk;
-        setCurrentStreamingMessage(fullResponse);
-      },
-      (productDecided, detectedSummary, detectedCategoryName, detectedQuickActions, detectedActiveFilters) => {
-        // Streaming complete - use the clean message content (fullResponse)
-        // Metadata has already been extracted by the API service
-
-        // If image was uploaded and we got a category name, show products
-        if (hasImage && detectedCategoryName) {
-          console.log('🖼️ Image uploaded with category:', detectedCategoryName);
-          setProductCategoryDecided(true);
-          setCategoryName(detectedCategoryName);
-        }
-        // Otherwise update based on backend response
-        else if (productDecided !== undefined) {
-          console.log('🔄 Product category decided:', productDecided);
-          setProductCategoryDecided(productDecided);
-        }
-
-        // Update category name if provided (even without image)
-        if (detectedCategoryName && !hasImage) {
-          console.log('🏷️ Category Name updated:', detectedCategoryName);
-          setCategoryName(detectedCategoryName);
-        }
-
-        // Update summary if provided
-        if (detectedSummary) {
-          console.log('📝 Summary updated:', detectedSummary);
-          setConversationSummary(detectedSummary);
-        }
-
-        // Update quick actions if provided
-        if (detectedQuickActions) {
-          console.log('⚡ Quick Actions received:', detectedQuickActions);
-          // Safety: Limit to max 4 actions
-          const limitedActions = detectedQuickActions.slice(0, 4);
-          setQuickActions(limitedActions);
-          if (detectedQuickActions.length > 4) {
-            console.warn(`⚠️ Truncated ${detectedQuickActions.length} actions to 4:`, detectedQuickActions);
-          }
-        }
-
-        // Update active filters if provided
-        if (detectedActiveFilters) {
-          console.log('🔍 Active Filters updated:', detectedActiveFilters);
-          setActiveFilters(detectedActiveFilters);
-        }
-
-        // Use the accumulated fullResponse as the message content
-        // This is clean text without JSON structure
-        responseContent = fullResponse;
-
-        // Add assistant message with the extracted content
         setConversations(prev => prev.map(conv =>
           conv.id === activeConversationId
-            ? {
-                ...conv,
-                messages: [...conv.messages, {
-                  role: 'assistant',
-                  content: responseContent,
-                  timestamp: new Date()
-                }]
-              }
+            ? { ...conv, messages: [...conv.messages, assistantMsg] }
             : conv
         ));
-        setIsStreaming(false);
-        setCurrentStreamingMessage("");
-      },
-      (error) => {
-        // Error handling
-        setIsStreaming(false);
-        setCurrentStreamingMessage("");
-        toast.error(error || "Failed to send message, please retry");
-      },
-      apiUrl,
-      systemPrompt
-    );
+
+        // Update quick actions if provided
+        if (parsedData.quick_actions && parsedData.quick_actions.length > 0) {
+          setQuickActions(parsedData.quick_actions);
+        }
+
+        // Update conversation summary
+        if (parsedData.summary) {
+          setConversationSummary(parsedData.summary);
+        }
+
+      } catch (parseError) {
+        // Fallback: If parsing fails, use raw response
+        console.error('Failed to parse chat response:', parseError);
+
+        const assistantMsg: Message = {
+          role: 'assistant',
+          content: replyText || 'Sorry, I received an unexpected response format.',
+          timestamp: new Date(),
+        };
+
+        setConversations(prev => prev.map(conv =>
+          conv.id === activeConversationId
+            ? { ...conv, messages: [...conv.messages, assistantMsg] }
+            : conv
+        ));
+
+        if (parseError instanceof ChatResponseParseError) {
+          toast.error('Response format error', {
+            description: 'Received an unexpected response format from the server.',
+          });
+        }
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send message");
+    }
   };
 
   const handleNewChat = () => {
@@ -245,13 +194,6 @@ const Index = () => {
     };
     setConversations(prev => [newConversation, ...prev]);
     setActiveConversationId(newId);
-    setProductCategoryDecided(false); // Reset to general conversation
-    setShowProductDetail(false); // Reset detail view
-    setConversationSummary(""); // Reset summary
-    setCategoryName(""); // Reset category name
-    setQuickActions(categories); // Reset quick actions to initialized categories
-    setSelectedProductId(null); // Reset selected product
-    setActiveFilters({}); // Reset filters
     setSidebarOpen(false);
   };
 
@@ -260,22 +202,8 @@ const Index = () => {
   };
 
   const handleQuickAction = (action: string) => {
-    // Clear quick actions when user clicks one
-    setQuickActions([]);
-    // Send the quick action as a message
+    setQuickActions([]); // 点击后清空快捷键（可选）
     handleSendMessage(action);
-  };
-
-  const handleProductClick = (productId: number) => {
-    console.log('🖱️ Product clicked:', productId);
-    setSelectedProductId(productId);
-    setShowProductDetail(true); // Show product detail
-  };
-
-  const handleBackToSearch = () => {
-    console.log('⬅️ Back to search');
-    setSelectedProductId(null);
-    setShowProductDetail(false); // Hide product detail
   };
 
   return (
@@ -294,51 +222,46 @@ const Index = () => {
       <div className="flex-1 flex relative z-10 border-r border-gray-200 min-w-0">
         <div className="flex-1 flex flex-col w-full min-w-0">
           {/* Header */}
-        <header className="border-b border-gray-200 p-3 sm:p-4 glass">
-          <div className="flex items-center justify-between gap-2 sm:gap-3">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <Button
-                onClick={() => setSidebarOpen(true)}
-                variant="ghost"
-                size="icon"
-                className="lg:hidden shrink-0"
-              >
-                <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
-              </Button>
-              <h1 className="text-sm sm:text-base md:text-lg font-semibold truncate">AI Shopping Assistant</h1>
-            </div>
-            <SettingsModal
-              apiUrl={apiUrl}
-              onApiUrlChange={setApiUrl}
-              conversationSummary={conversationSummary}
-            />
-          </div>
-        </header>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6">
-          <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
-            {messages.map((msg, idx) => (
-              <ChatMessage key={idx} {...msg} />
-            ))}
-            {isStreaming && currentStreamingMessage && (
-              <ChatMessage
-                role="assistant"
-                content={currentStreamingMessage}
-                timestamp={new Date()}
-              />
-            )}
-            {isStreaming && !currentStreamingMessage && <TypingIndicator />}
-            {isInitializing && messages.length === 1 && (
-              <div className="text-center py-4" role="status" aria-live="polite">
-                <p className="text-sm text-muted-foreground">Getting ready...</p>
+          <header className="border-b border-gray-200 p-3 sm:p-4 glass">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <Button
+                  onClick={() => setSidebarOpen(true)}
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden shrink-0"
+                >
+                  <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
+                </Button>
+                <h1 className="text-sm sm:text-base md:text-lg font-semibold truncate">AI Shopping Assistant</h1>
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
+              <SettingsModal
+                apiUrl={apiUrl}
+                onApiUrlChange={setApiUrl}
+                conversationSummary={conversationSummary}
+                systemPrompt={systemPrompt}
+                onSystemPromptChange={setSystemPrompt}
+              />
+            </div>
+          </header>
 
-          {/* Quick Action Buttons */}
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6">
+            <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
+              {messages.map((msg, idx) => (
+                <ChatMessage key={idx} {...msg} />
+              ))}
+              {/* 非流式最简：初始化加载提示（可留） */}
+              {isInitializing && messages.length === 1 && (
+                <div className="text-center py-4" role="status" aria-live="polite">
+                  <p className="text-sm text-muted-foreground">Getting ready...</p>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Quick Action Buttons（可选） */}
           {(quickActions.length > 0 || isInitializing) && (
             <QuickActionButtons
               actions={quickActions}
@@ -354,24 +277,7 @@ const Index = () => {
           />
         </div>
 
-        {/* Products Panel */}
-        <ProductsPanel
-          showPanel={productCategoryDecided}
-          showDetail={showProductDetail}
-          categoryName={categoryName}
-          selectedProductId={selectedProductId}
-          onBackToSearch={handleBackToSearch}
-          onProductClick={handleProductClick}
-          apiUrl={apiUrl}
-          categories={categories}
-          activeFilters={activeFilters}
-          onRemoveFilter={(filterKey) => {
-            const newFilters = { ...activeFilters };
-            delete newFilters[filterKey];
-            setActiveFilters(newFilters);
-          }}
-          onClearFilters={() => setActiveFilters({})}
-        />
+        {/* 🔕 已去除 ProductsPanel，保留最简聊天 */}
       </div>
     </div>
   );

@@ -14,16 +14,27 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { API_URLS } from "@/config/api";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DEFAULT_SYSTEM_PROMPT } from "@/config/prompts";
 
 interface SettingsModalProps {
   apiUrl: string;
   onApiUrlChange: (url: string) => void;
   conversationSummary: string;
+  systemPrompt: string;
+  onSystemPromptChange: (prompt: string) => void;
 }
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'testing' | 'mixed-content';
 
-export const SettingsModal = ({ apiUrl, onApiUrlChange, conversationSummary }: SettingsModalProps) => {
+export const SettingsModal = ({
+  apiUrl,
+  onApiUrlChange,
+  conversationSummary,
+  systemPrompt,
+  onSystemPromptChange
+}: SettingsModalProps) => {
   const [status, setStatus] = useState<ConnectionStatus>('testing');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
@@ -128,13 +139,19 @@ export const SettingsModal = ({ apiUrl, onApiUrlChange, conversationSummary }: S
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base sm:text-lg">Settings & Debug</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg">Settings</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            View API configuration and connection status
+            Configure API connection and system prompt
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
+        <Tabs defaultValue="connection" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="connection">Connection</TabsTrigger>
+            <TabsTrigger value="prompt">System Prompt</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="connection" className="space-y-4 sm:space-y-6 py-2 sm:py-4">
           {/* Custom URL Toggle */}
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center justify-between">
@@ -284,7 +301,61 @@ export const SettingsModal = ({ apiUrl, onApiUrlChange, conversationSummary }: S
               <div>Timestamp: {new Date().toISOString()}</div>
             </div>
           </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="prompt" className="space-y-4 sm:space-y-6 py-2 sm:py-4">
+            {/* System Prompt Configuration */}
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm sm:text-base font-semibold">System Prompt</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSystemPromptChange(DEFAULT_SYSTEM_PROMPT)}
+                  className="text-xs sm:text-sm"
+                >
+                  Reset to Default
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <Textarea
+                  value={systemPrompt}
+                  onChange={(e) => onSystemPromptChange(e.target.value)}
+                  placeholder="Enter system prompt (e.g., 'You are a helpful shopping assistant. Always respond in JSON format with keys: message, category, filters.')"
+                  className="min-h-[150px] font-mono text-xs sm:text-sm resize-y"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Custom instructions that will be prepended to every message. Use this to control AI response format (e.g., JSON output).
+                </p>
+              </div>
+            </div>
+
+            {/* Example Prompts */}
+            <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t">
+              <Label className="text-sm sm:text-base font-semibold">Example Prompts</Label>
+              <div className="space-y-2">
+                <div
+                  className="p-2 sm:p-3 bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
+                  onClick={() => onSystemPromptChange('You are a helpful shopping assistant. Always respond in JSON format with keys: message, category, filters.')}
+                >
+                  <div className="text-xs sm:text-sm font-medium mb-1">JSON Response Format</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
+                    You are a helpful shopping assistant. Always respond in JSON format with keys: message, category, filters.
+                  </div>
+                </div>
+                <div
+                  className="p-2 sm:p-3 bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
+                  onClick={() => onSystemPromptChange('You are a concise shopping assistant. Keep responses under 50 words and provide product recommendations.')}
+                >
+                  <div className="text-xs sm:text-sm font-medium mb-1">Concise Assistant</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
+                    You are a concise shopping assistant. Keep responses under 50 words and provide product recommendations.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
