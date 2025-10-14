@@ -26,7 +26,32 @@ interface Conversation {
   title: string;
   timestamp: string;
   messages: Message[];
+  summary?: string;
+  fallbackSummary?: string;
 }
+
+// Helper function to generate a fallback summary from recent messages
+const generateFallbackSummary = (messages: Message[]): string => {
+  if (messages.length === 0) return "";
+
+  // Get the last 4 messages (2 exchanges) excluding initial greeting
+  const recentMessages = messages
+    .filter(m => m.role === 'user' || !m.content.includes("I'm your AI shopping assistant"))
+    .slice(-4);
+
+  if (recentMessages.length === 0) return "";
+
+  // Create a compact summary
+  const summaryParts: string[] = [];
+
+  for (const msg of recentMessages) {
+    const content = msg.content.substring(0, 100); // Limit to 100 chars per message
+    const truncated = msg.content.length > 100 ? content + "..." : content;
+    summaryParts.push(`${msg.role === 'user' ? 'User' : 'AI'}: ${truncated}`);
+  }
+
+  return summaryParts.join(' | ');
+};
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,7 +60,6 @@ const Index = () => {
     return localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   });
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
-  const [conversationSummary, setConversationSummary] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 初始化分类（仅用于 Quick Actions，可选）
@@ -118,12 +142,16 @@ const Index = () => {
       ));
     }
 
-    // 3) 发送消息，支持系统提示和图片
+    // 3) Get current conversation summary (prefer AI summary, fallback to manual)
+    const currentSummary = activeConversation?.summary || activeConversation?.fallbackSummary || "";
+
+    // 4) 发送消息，支持系统提示、会话摘要和图片
     try {
       const replyText = await sendChatMessage(
         message,
         apiUrl,
         systemPrompt || undefined,
+        currentSummary || undefined,
         image,
         imageMediaType
       );
@@ -144,42 +172,107 @@ const Index = () => {
           timestamp: new Date(),
         };
 
-        setConversations(prev => prev.map(conv =>
-          conv.id === activeConversationId
-            ? { ...conv, messages: [...conv.messages, assistantMsg] }
-            : conv
-        ));
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === activeConversationId) {
+            const updatedMessages = [...conv.messages, assistantMsg];
+            return {
+              ...conv,
+              messages: updatedMessages,
+              // Update conversation summary from AI response
+              summary: parsedData.summary || conv.summary,
+              // Update fallback summary in case AI summary is empty
+              fallbackSummary: generateFallbackSummary(updatedMessages)
+            };
+          }
+          return conv;
+        }));
 
         // Update quick actions if provided
         if (parsedData.quick_actions && parsedData.quick_actions.length > 0) {
           setQuickActions(parsedData.quick_actions);
         }
 
-        // Update conversation summary
-        if (parsedData.summary) {
-          setConversationSummary(parsedData.summary);
-        }
-
       } catch (parseError) {
-        // Fallback: If parsing fails, use raw response
         console.error('Failed to parse chat response:', parseError);
 
-        const assistantMsg: Message = {
-          role: 'assistant',
-          content: replyText || 'Sorry, I received an unexpected response format.',
-          timestamp: new Date(),
-        };
+        // Retry: Send the failed response back to backend to extract JSON
+        try {
+          console.log('\n🔄 [Retry] Attempting to extract JSON from failed response...');
 
-        setConversations(prev => prev.map(conv =>
-          conv.id === activeConversationId
-            ? { ...conv, messages: [...conv.messages, assistantMsg] }
-            : conv
-        ));
+          const retrySystemPrompt = `${DEFAULT_SYSTEM_PROMPT}
 
-        if (parseError instanceof ChatResponseParseError) {
-          toast.error('Response format error', {
-            description: 'Received an unexpected response format from the server.',
-          });
+IMPORTANT: The following is a malformed response that contains a JSON object mixed with other text. Extract ONLY the JSON object and return it. Do not include any other text, explanations, or notes.
+
+Response to parse:
+${replyText}`;
+
+          const retryReplyText = await sendChatMessage(
+            "Extract the JSON from the above response",
+            apiUrl,
+            retrySystemPrompt,
+            undefined, // No conversation summary for retry
+            undefined, // No image for retry
+            undefined
+          );
+
+          // Try parsing the retry response
+          const retryParsedData = parseChatResponse(retryReplyText);
+
+          console.log('\n✅ [Retry Success] Successfully parsed JSON from retry');
+          console.log(JSON.stringify(retryParsedData, null, 2));
+
+          // Use the successfully parsed retry response
+          const assistantMsg: Message = {
+            role: 'assistant',
+            content: retryParsedData.message,
+            timestamp: new Date(),
+          };
+
+          setConversations(prev => prev.map(conv => {
+            if (conv.id === activeConversationId) {
+              const updatedMessages = [...conv.messages, assistantMsg];
+              return {
+                ...conv,
+                messages: updatedMessages,
+                summary: retryParsedData.summary || conv.summary,
+                fallbackSummary: generateFallbackSummary(updatedMessages)
+              };
+            }
+            return conv;
+          }));
+
+          // Update quick actions if provided
+          if (retryParsedData.quick_actions && retryParsedData.quick_actions.length > 0) {
+            setQuickActions(retryParsedData.quick_actions);
+          }
+
+        } catch (retryError) {
+          // Fallback: If retry also fails, use raw response
+          console.error('❌ [Retry Failed] Could not extract JSON even after retry:', retryError);
+
+          const assistantMsg: Message = {
+            role: 'assistant',
+            content: replyText || 'Sorry, I received an unexpected response format.',
+            timestamp: new Date(),
+          };
+
+          setConversations(prev => prev.map(conv => {
+            if (conv.id === activeConversationId) {
+              const updatedMessages = [...conv.messages, assistantMsg];
+              return {
+                ...conv,
+                messages: updatedMessages,
+                fallbackSummary: generateFallbackSummary(updatedMessages)
+              };
+            }
+            return conv;
+          }));
+
+          if (parseError instanceof ChatResponseParseError) {
+            toast.error('Response format error', {
+              description: 'Received an unexpected response format from the server.',
+            });
+          }
         }
       }
     } catch (err: any) {
@@ -247,7 +340,7 @@ const Index = () => {
               <SettingsModal
                 apiUrl={apiUrl}
                 onApiUrlChange={setApiUrl}
-                conversationSummary={conversationSummary}
+                conversationSummary={activeConversation?.summary || activeConversation?.fallbackSummary || ""}
                 systemPrompt={systemPrompt}
                 onSystemPromptChange={setSystemPrompt}
               />

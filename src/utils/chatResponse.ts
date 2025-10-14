@@ -77,10 +77,20 @@ export function parseChatResponse(text: string): ParsedChatData {
       throw new ChatResponseParseError('Response missing "reply" field or it is not a string');
     }
 
-    // Step 2: Parse inner JSON string to get structured data
-    const innerJson = JSON.parse(outerJson.reply);
+    // Step 2: Clean the reply string by removing any "Note:" sections or text after the last closing brace
+    let cleanedReply = outerJson.reply.trim();
 
-    // Step 3: Validate the structure
+    // Find the last closing brace which should end the JSON object
+    const lastBraceIndex = cleanedReply.lastIndexOf('}');
+    if (lastBraceIndex !== -1) {
+      // Extract only the JSON part (from start to last closing brace)
+      cleanedReply = cleanedReply.substring(0, lastBraceIndex + 1);
+    }
+
+    // Step 3: Parse inner JSON string to get structured data
+    const innerJson = JSON.parse(cleanedReply);
+
+    // Step 4: Validate the structure
     if (!isValidChatResponse(innerJson)) {
       throw new ChatResponseParseError(
         'Response does not match expected ChatResponse structure. ' +

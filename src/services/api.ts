@@ -4,16 +4,27 @@ export async function sendChatMessage(
   message: string,
   apiUrl?: string,
   systemPrompt?: string,
+  conversationSummary?: string,
   image?: string,
   imageMediaType?: string
 ): Promise<string> {
   const baseUrl = apiUrl || localStorage.getItem('api_url') || API_URLS.PRODUCTION;
   const endpoint = `${baseUrl}${API_CONFIG.ENDPOINTS.CHAT}`;
 
-  // Combine system prompt with user message if provided
-  const combinedMessage = systemPrompt
-    ? `${systemPrompt}\n\nUser: ${message}`
-    : message;
+  // Combine system prompt, conversation summary, and user message
+  let combinedMessage = message;
+
+  if (systemPrompt) {
+    combinedMessage = `${systemPrompt}\n\nUser: ${message}`;
+
+    // Insert conversation summary between system prompt and user message if available
+    if (conversationSummary) {
+      combinedMessage = `${systemPrompt}\n\nConversation Summary: ${conversationSummary}\n\nUser: ${message}`;
+    }
+  } else if (conversationSummary) {
+    // If no system prompt but has summary, prepend it
+    combinedMessage = `Conversation Summary: ${conversationSummary}\n\nUser: ${message}`;
+  }
 
   // Build FormData
   const formData = new FormData();
@@ -43,6 +54,11 @@ export async function sendChatMessage(
   console.log('User Message:', message);
   if (systemPrompt) {
     console.log('System Prompt:', systemPrompt);
+  }
+  if (conversationSummary) {
+    console.log('Conversation Summary:', conversationSummary);
+  }
+  if (systemPrompt || conversationSummary) {
     console.log('Combined Message:', combinedMessage);
   }
   if (image && imageMediaType) {
