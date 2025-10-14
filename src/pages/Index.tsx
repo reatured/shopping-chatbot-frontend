@@ -128,6 +128,11 @@ const Index = () => {
       try {
         const parsedData = parseChatResponse(replyText);
 
+        // Log parsed response for debugging
+        console.log('\n📋 [Parsed Response] ═════════════════════════════════════════════════');
+        console.log(JSON.stringify(parsedData, null, 2));
+        console.log('═══════════════════════════════════════════════════════════════════════\n');
+
         // Create assistant message with parsed content
         const assistantMsg: Message = {
           role: 'assistant',
