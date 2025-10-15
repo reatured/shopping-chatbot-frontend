@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { ProductCard } from "./ProductCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -40,20 +40,13 @@ export const ProductsPanel = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Track previous category to detect changes
-  const prevCategoryRef = useRef<string>("");
-
   // Fetch products when panel is shown and category is selected
   useEffect(() => {
     if (showPanel && !showDetail && categoryName) {
-      // Only fetch if category actually changed
-      if (prevCategoryRef.current !== categoryName) {
-        console.log('🔍 Category changed from', prevCategoryRef.current, 'to', categoryName, '- fetching products');
-        fetchProducts();
-        prevCategoryRef.current = categoryName;
-      }
+      console.log('🔍 Fetching products for category:', categoryName, 'with filters:', activeFilters);
+      fetchProducts();
     }
-  }, [showPanel, showDetail, categoryName]);
+  }, [showPanel, showDetail, categoryName, activeFilters]);
 
   // Fetch single product when detail view is shown
   useEffect(() => {
