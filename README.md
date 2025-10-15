@@ -12,15 +12,37 @@ An **AI-powered shopping assistant** that helps users find products through conv
 
 ## Demo Web Page
 👉 [Frontend Demo](https://shop-glass-ai.lovable.app/)  
+Try Car and Backpack for now as they have the most data in the database for demo.
+
 👉 [Backend Repo](https://github.com/reatured/ecommerce-chatbot-api)  
 👉 [Product Database](https://docs.google.com/spreadsheets/d/1LjQn5xgkAsXlW0kxCfq60C8P_siXzzGksx8LdMOH9YU/edit?usp=sharing)  
 _Add more products in any category, and the chatbot automatically adapts its recommendations in real time._
 
----
+## ⚙️ Tech Stack & Design Decisions
+
+### 🧠 Frontend — React + TypeScript
+- Parse structured AI responses and dynamically update UI stages based on parsed metadata  
+- Product display panel that renders products from AI response metadata  
+- Dynamic data retrieval from the backend database  
+
+### ⚡ Backend — FastAPI (Python)
+- **Anthropic AI API** for conversational chatbot and image understanding  
+- Tool-use enabled, allowing AI to dynamically read needed categories and options for further conversation  
+- Endpoints such as *get all categories* and *get all options* allow AI to quickly fetch necessary info without loading the full database — reducing token cost, data transfer, and latency  
+- **Google Sheets (CSV)** as a lightweight, updatable product database  
+- Product information updates in real time; since AI reads data dynamically, any database change is immediately reflected  
+- Built-in caching and filtering for efficient product queries  
+
+**Why this stack?**  
+The **React + FastAPI** setup provides clear separation of concerns — React manages user interaction and state, while FastAPI handles data, logic, and AI requests.  
+Both are lightweight, modern, and fast, enabling seamless real-time communication between frontend and backend.
+
+
 
 ## Screenshots
 **Start Page**  
 The landing page showcasing entry points to the AI shopping assistant.  
+Quick action button above the input field to quickly suggestion actions.
 ![Start Page](./Image/Start%20Page.jpeg)
 
 **General Chat**  
@@ -262,3 +284,8 @@ Testing endpoints: **https://ecommerce-chatbot-api-09va.onrender.com/docs**
 	- Maintains **conversation memory** across sessions.  
 	- Automatically applies **active filters** and re-filters results dynamically.  
 	- Removes duplicate products and logs all interactions for debugging.
+
+
+
+
+
