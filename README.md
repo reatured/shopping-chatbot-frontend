@@ -59,20 +59,22 @@ Another example of visual search results returned from an uploaded image.
 
 ## Backend API Endpoints
 
-This project uses the E-commerce Chatbot API (backend) located in `ecommerce-chatbot-api/`. Below is a consolidated reference of the available endpoints, their purpose, parameters, example usage, and sample responses to help the frontend integrate with the backend.
+Backend deployed on **Render:**  
+🔗 **https://ecommerce-chatbot-api-09va.onrender.com/**  
+Testing endpoints: **https://ecommerce-chatbot-api-09va.onrender.com/docs**
 
-Note: All endpoints are served under the same host where the backend is deployed. Replace `BASE_URL` with your backend origin (for local development this may be `http://localhost:8000`).
+---
 
 ### 1) Health / Root
-- Route: `GET /`
-- Description: Basic health check and endpoint discovery. Returns a list of available routes and notes.
-- Parameters: none
-- Sample use (curl):
-
-	GET ${BASE_URL}/
-
-- Sample response:
-
+- **Route:** `GET /`
+- **Description:** Basic health check and endpoint discovery. Returns a list of available routes and notes.
+- **Parameters:** none  
+- **Sample use (curl):**
+	```bash
+	GET https://ecommerce-chatbot-api-09va.onrender.com/
+	```
+- **Sample response:**
+	```json
 	{
 		"status": "ok",
 		"message": "E-commerce Chatbot API is running",
@@ -85,17 +87,20 @@ Note: All endpoints are served under the same host where the backend is deployed
 		},
 		"notes": { ... }
 	}
+	```
+
+---
 
 ### 2) Initialize App
-- Route: `GET /api/init`
-- Description: Wake backend specifically for my online deployment on Render as it need 30 seconds to be awake after long time of inactivity.
-- Parameters: none
-- Sample use (curl):
-
-	GET ${BASE_URL}/api/init
-
-- Sample response:
-
+- **Route:** `GET /api/init`
+- **Description:** Wake backend specifically for the Render deployment (takes ~30 seconds after inactivity).  
+- **Parameters:** none  
+- **Sample use (curl):**
+	```bash
+	GET https://ecommerce-chatbot-api-09va.onrender.com/api/init
+	```
+- **Sample response:**
+	```json
 	{
 		"status": "ready",
 		"categories": ["car", "backpack"],
@@ -106,19 +111,22 @@ Note: All endpoints are served under the same host where the backend is deployed
 			"cache_ttl_seconds": 300
 		}
 	}
+	```
+
+---
 
 ### 3) List Products
-- Route: `GET /api/products`
-- Description: Returns all products with optional filters for `category` and `color`.
-- Query parameters:
-	- `category` (optional) — Filter by product category (e.g., `car`, `backpack`).
-	- `color` (optional) — Filter by color.
-- Sample use (curl):
-
-	GET ${BASE_URL}/api/products?category=backpack&color=blue
-
-- Sample response (truncated):
-
+- **Route:** `GET /api/products`
+- **Description:** Returns all products with optional filters for `category` and `color`.  
+- **Query parameters:**
+	- `category` (optional) — Filter by product category (e.g., `car`, `backpack`)
+	- `color` (optional) — Filter by color  
+- **Sample use (curl):**
+	```bash
+	GET https://ecommerce-chatbot-api-09va.onrender.com/api/products?category=backpack&color=blue
+	```
+- **Sample response (truncated):**
+	```json
 	{
 		"products": [
 			{
@@ -136,37 +144,43 @@ Note: All endpoints are served under the same host where the backend is deployed
 		"count": 1,
 		"filters": {"category": "backpack", "color": "blue"}
 	}
+	```
+
+---
 
 ### 4) Search Products
-- Route: `GET /api/products/search`
-- Description: Full-text keyword search across `name`, `description`, `brand`, `tags`, and `color`.
-- Query parameters:
-	- `q` (required) — Search query string (minimum 2 characters).
-	- `category` (optional) — Limit search to a specific category.
-- Sample use (curl):
-
-	GET ${BASE_URL}/api/products/search?q=waterproof+backpack&category=backpack
-
-- Sample response (truncated):
-
+- **Route:** `GET /api/products/search`
+- **Description:** Full-text keyword search across `name`, `description`, `brand`, `tags`, and `color`.  
+- **Query parameters:**
+	- `q` (required) — Search query string (minimum 2 characters)
+	- `category` (optional) — Limit search to a specific category  
+- **Sample use (curl):**
+	```bash
+	GET https://ecommerce-chatbot-api-09va.onrender.com/api/products/search?q=waterproof+backpack&category=backpack
+	```
+- **Sample response (truncated):**
+	```json
 	{
 		"products": [ /* matching product objects */ ],
 		"count": 3,
 		"query": "waterproof backpack",
 		"category": "backpack"
 	}
+	```
+
+---
 
 ### 5) Get Product by ID
-- Route: `GET /api/products/{product_id}`
-- Description: Retrieve a single product by its integer ID.
-- Path parameters:
-	- `product_id` (required) — integer product id.
-- Sample use (curl):
-
-	GET ${BASE_URL}/api/products/123
-
-- Sample response (product object):
-
+- **Route:** `GET /api/products/{product_id}`
+- **Description:** Retrieve a single product by its integer ID.  
+- **Path parameters:**
+	- `product_id` (required) — integer product id  
+- **Sample use (curl):**
+	```bash
+	GET https://ecommerce-chatbot-api-09va.onrender.com/api/products/123
+	```
+- **Sample response:**
+	```json
 	{
 		"id": 123,
 		"name": "Sample Product",
@@ -178,7 +192,73 @@ Note: All endpoints are served under the same host where the backend is deployed
 		"image_url": "https://...",
 		"tags": "auto,accessory"
 	}
+	```
 
+### 6) Chat with Claude
+- **Route:** `POST /api/chat/anthropic/stream`
+- **Description:** Main chatbot endpoint powered by Claude AI with vision and tool-use capabilities. The chatbot can search, filter, and recommend products with contextual understanding.
+- **Content-Type:** `multipart/form-data`  
+- **Parameters (Form Data):**
+	- `message` *(string, required)* — User’s text query.  
+	- `image` *(file, optional)* — Optional product image (JPEG/PNG).  
+	- `conversation_history` *(JSON, optional)* — Previous chat messages for context.  
+	- `active_filters` *(JSON, optional)* — Product filters like `{"category":"backpack","color":"blue"}`.  
+	- `model` *(string, optional)* — Claude model (default: `"claude-3-5-haiku-latest"`).  
+	- `max_tokens` *(integer, optional)* — Max tokens for AI output (default: `512`).  
+	- `image_media_type` *(string, optional)* — MIME type (default: `"image/jpeg"`).  
 
----
+- **Sample use (curl):**
+	```bash
+	# 1. Simple text query
+	curl -X POST https://ecommerce-chatbot-api-09va.onrender.com/api/chat/anthropic/stream \
+	  -F "message=Show me blue backpacks under $100"
 
+	# 2. With conversation history
+	curl -X POST https://ecommerce-chatbot-api-09va.onrender.com/api/chat/anthropic/stream \
+	  -F "message=What about red ones?" \
+	  -F 'conversation_history=[{"role":"assistant","content":"Hi!"},{"role":"user","content":"Show me backpacks"}]'
+
+	# 3. With active filters
+	curl -X POST https://ecommerce-chatbot-api-09va.onrender.com/api/chat/anthropic/stream \
+	  -F "message=Show me products" \
+	  -F 'active_filters={"category":"backpack","color":"blue"}'
+
+	# 4. With image upload
+	curl -X POST https://ecommerce-chatbot-api-09va.onrender.com/api/chat/anthropic/stream \
+	  -F "message=Find products similar to this image" \
+	  -F "image=@/path/to/product.jpg"
+	```
+
+- **Sample response:**
+	```json
+	{
+		"reply": "I found 3 blue backpacks for you...",
+		"products": [
+			{
+				"id": 12,
+				"name": "JanSport Right Pack",
+				"category": "backpack",
+				"brand": "JanSport",
+				"price": 45.0,
+				"color": "Blue",
+				"description": "Classic school backpack with multiple pockets",
+				"image_url": "https://...",
+				"tags": "school,classic,everyday"
+			}
+		]
+	}
+	```
+
+- **Error responses:**
+	```json
+	{ "detail": "Missing ANTHROPIC_API_KEY" }
+	```
+	```json
+	{ "detail": "Error message from Claude API or processing" }
+	```
+
+- **Notes:**
+	- Supports **text + image** inputs for product search and recommendations.  
+	- Maintains **conversation memory** across sessions.  
+	- Automatically applies **active filters** and re-filters results dynamically.  
+	- Removes duplicate products and logs all interactions for debugging.
