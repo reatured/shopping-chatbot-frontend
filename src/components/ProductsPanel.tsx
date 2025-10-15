@@ -108,7 +108,8 @@ export const ProductsPanel = ({
   // Product Detail View
   if (showDetail) {
     return (
-      <div className="hidden lg:flex lg:w-80 xl:w-96 border-l flex-col h-full animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-0 z-50 bg-background lg:relative lg:z-auto lg:w-80 xl:w-96 border-l flex flex-col h-full animate-in slide-in-from-right duration-300">
+
         {/* Header with Back Button */}
         <div className="border-b p-4">
           <div className="flex items-center justify-between gap-2 mb-3">
@@ -245,7 +246,8 @@ export const ProductsPanel = ({
   const hasFilters = Object.keys(activeFilters).length > 0;
 
   return (
-    <div className="hidden lg:flex lg:w-80 xl:w-96 border-l flex-col h-full animate-in slide-in-from-right duration-300">
+    <div className="fixed inset-0 z-50 bg-background lg:relative lg:z-auto lg:w-80 xl:w-96 border-l flex flex-col h-full animate-in slide-in-from-right duration-300">
+
       <div className="border-b p-4">
         {categoryName ? (
           <>
