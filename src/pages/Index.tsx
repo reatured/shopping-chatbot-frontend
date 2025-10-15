@@ -30,6 +30,7 @@ interface Conversation {
   summary?: string;
   fallbackSummary?: string;
   categoryName?: string;
+  activeFilters?: Record<string, any>;
 }
 
 // Helper function to generate a fallback summary from recent messages
@@ -204,7 +205,9 @@ const Index = () => {
               // Update fallback summary in case AI summary is empty
               fallbackSummary: generateFallbackSummary(updatedMessages),
               // Update category name
-              categoryName: newCategoryName
+              categoryName: newCategoryName,
+              // Update active filters from AI response
+              activeFilters: parsedData.active_filters || {}
             };
           }
           return conv;
@@ -271,7 +274,8 @@ ${replyText}`;
                 messages: updatedMessages,
                 summary: retryParsedData.summary || conv.summary,
                 fallbackSummary: generateFallbackSummary(updatedMessages),
-                categoryName: newCategoryName
+                categoryName: newCategoryName,
+                activeFilters: retryParsedData.active_filters || {}
               };
             }
             return conv;
@@ -359,6 +363,26 @@ ${replyText}`;
   const handleBackToSearch = () => {
     setShowProductDetail(false);
     setSelectedProductId(null);
+  };
+
+  const handleRemoveFilter = (filterKey: string) => {
+    setConversations(prev => prev.map(conv => {
+      if (conv.id === activeConversationId && conv.activeFilters) {
+        const newFilters = { ...conv.activeFilters };
+        delete newFilters[filterKey];
+        return { ...conv, activeFilters: newFilters };
+      }
+      return conv;
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setConversations(prev => prev.map(conv => {
+      if (conv.id === activeConversationId) {
+        return { ...conv, activeFilters: {} };
+      }
+      return conv;
+    }));
   };
 
   return (
@@ -459,6 +483,9 @@ ${replyText}`;
           onClose={handleClosePanel}
           apiUrl={apiUrl}
           categories={categories}
+          activeFilters={activeConversation.activeFilters || {}}
+          onRemoveFilter={handleRemoveFilter}
+          onClearFilters={handleClearFilters}
         />
       )}
     </div>

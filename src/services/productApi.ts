@@ -195,12 +195,18 @@ export async function fetchProductsByName(
     searchQuery = searchQuery.trim();
 
     if (searchQuery) {
-      // Search with specific terms within the category
-      console.log(`🔎 Searching for "${searchQuery}" in category "${category}"`, additionalFilters ? `with filters: ${JSON.stringify(additionalFilters)}` : '');
-      // Note: searchProducts doesn't support additional filters yet, but we log them for future enhancement
-      return searchProducts(searchQuery, category as any, apiUrl);
+      // Check if we have additional filters - if yes, use getProducts with filters
+      if (additionalFilters && Object.keys(additionalFilters).length > 0) {
+        // Use getProducts with combined filters (category + additional filters)
+        console.log(`🔎 Searching with filters for "${searchQuery}" in category "${category}"`, `filters: ${JSON.stringify(additionalFilters)}`);
+        return getProductsByCategory(category as any, apiUrl, additionalFilters);
+      } else {
+        // No filters - use text search endpoint
+        console.log(`🔎 Text search for "${searchQuery}" in category "${category}"`);
+        return searchProducts(searchQuery, category as any, apiUrl);
+      }
     } else {
-      // Fallback to category browse
+      // Fallback to category browse with filters
       console.log(`📦 Fallback: Fetching all products for category: ${category}`, additionalFilters ? `with filters: ${JSON.stringify(additionalFilters)}` : '');
       return getProductsByCategory(category as any, apiUrl, additionalFilters);
     }
