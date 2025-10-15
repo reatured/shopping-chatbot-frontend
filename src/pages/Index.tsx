@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Menu } from "lucide-react";
+import { Menu, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -7,6 +7,7 @@ import { ChatInput } from "@/components/ChatInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { SettingsModal } from "@/components/SettingsModal";
 import { QuickActionButtons } from "@/components/QuickActionButtons";
+import { ProductsPanel } from "@/components/ProductsPanel";
 import { sendChatMessage } from "@/services/api";
 import { useInitialization } from "@/hooks/useInitialization";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ interface Conversation {
   messages: Message[];
   summary?: string;
   fallbackSummary?: string;
+  categoryName?: string;
 }
 
 // Helper function to generate a fallback summary from recent messages
@@ -71,6 +73,11 @@ const Index = () => {
   } = useInitialization(apiUrl);
 
   const [quickActions, setQuickActions] = useState<string[]>(categories);
+
+  // Product panel state management
+  const [isPanelVisible, setIsPanelVisible] = useState(false);
+  const [showProductDetail, setShowProductDetail] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -175,13 +182,29 @@ const Index = () => {
         setConversations(prev => prev.map(conv => {
           if (conv.id === activeConversationId) {
             const updatedMessages = [...conv.messages, assistantMsg];
+
+            // Check if category is decided and store it
+            let newCategoryName = conv.categoryName;
+            if (parsedData.product_category_decided && parsedData.category_name) {
+              newCategoryName = parsedData.category_name;
+              // Auto-show product panel when category is set
+              setIsPanelVisible(true);
+              // Reset detail view when category changes
+              if (conv.categoryName !== parsedData.category_name) {
+                setShowProductDetail(false);
+                setSelectedProductId(null);
+              }
+            }
+
             return {
               ...conv,
               messages: updatedMessages,
               // Update conversation summary from AI response
               summary: parsedData.summary || conv.summary,
               // Update fallback summary in case AI summary is empty
-              fallbackSummary: generateFallbackSummary(updatedMessages)
+              fallbackSummary: generateFallbackSummary(updatedMessages),
+              // Update category name
+              categoryName: newCategoryName
             };
           }
           return conv;
@@ -231,11 +254,24 @@ ${replyText}`;
           setConversations(prev => prev.map(conv => {
             if (conv.id === activeConversationId) {
               const updatedMessages = [...conv.messages, assistantMsg];
+
+              // Check if category is decided and store it (retry case)
+              let newCategoryName = conv.categoryName;
+              if (retryParsedData.product_category_decided && retryParsedData.category_name) {
+                newCategoryName = retryParsedData.category_name;
+                setIsPanelVisible(true);
+                if (conv.categoryName !== retryParsedData.category_name) {
+                  setShowProductDetail(false);
+                  setSelectedProductId(null);
+                }
+              }
+
               return {
                 ...conv,
                 messages: updatedMessages,
                 summary: retryParsedData.summary || conv.summary,
-                fallbackSummary: generateFallbackSummary(updatedMessages)
+                fallbackSummary: generateFallbackSummary(updatedMessages),
+                categoryName: newCategoryName
               };
             }
             return conv;
@@ -308,6 +344,23 @@ ${replyText}`;
     handleSendMessage(action);
   };
 
+  // Product panel event handlers
+  const handleClosePanel = () => {
+    setIsPanelVisible(false);
+    setShowProductDetail(false);
+    setSelectedProductId(null);
+  };
+
+  const handleProductClick = (productId: number) => {
+    setSelectedProductId(productId);
+    setShowProductDetail(true);
+  };
+
+  const handleBackToSearch = () => {
+    setShowProductDetail(false);
+    setSelectedProductId(null);
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden">
       {/* Sidebar */}
@@ -337,13 +390,27 @@ ${replyText}`;
                 </Button>
                 <h1 className="text-sm sm:text-base md:text-lg font-semibold truncate">AI Shopping Assistant</h1>
               </div>
-              <SettingsModal
-                apiUrl={apiUrl}
-                onApiUrlChange={setApiUrl}
-                conversationSummary={activeConversation?.summary || activeConversation?.fallbackSummary || ""}
-                systemPrompt={systemPrompt}
-                onSystemPromptChange={setSystemPrompt}
-              />
+              <div className="flex items-center gap-2">
+                {/* Show Products Panel Button - appears when panel is hidden but category exists */}
+                {!isPanelVisible && activeConversation?.categoryName && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsPanelVisible(true)}
+                    title="Show product recommendations"
+                    className="shrink-0"
+                  >
+                    <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </Button>
+                )}
+                <SettingsModal
+                  apiUrl={apiUrl}
+                  onApiUrlChange={setApiUrl}
+                  conversationSummary={activeConversation?.summary || activeConversation?.fallbackSummary || ""}
+                  systemPrompt={systemPrompt}
+                  onSystemPromptChange={setSystemPrompt}
+                />
+              </div>
             </div>
           </header>
 
@@ -378,9 +445,22 @@ ${replyText}`;
             disabled={isInitializing && !isInitialized}
           />
         </div>
-
-        {/* 🔕 已去除 ProductsPanel，保留最简聊天 */}
       </div>
+
+      {/* Products Panel - Right Sidebar */}
+      {isPanelVisible && activeConversation?.categoryName && (
+        <ProductsPanel
+          showPanel={isPanelVisible}
+          showDetail={showProductDetail}
+          categoryName={activeConversation.categoryName}
+          selectedProductId={selectedProductId}
+          onBackToSearch={handleBackToSearch}
+          onProductClick={handleProductClick}
+          onClose={handleClosePanel}
+          apiUrl={apiUrl}
+          categories={categories}
+        />
+      )}
     </div>
   );
 };

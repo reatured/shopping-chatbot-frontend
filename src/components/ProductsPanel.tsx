@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ProductCard } from "./ProductCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ interface ProductsPanelProps {
   selectedProductId: number | null;
   onBackToSearch: () => void;
   onProductClick: (productId: number) => void;
+  onClose?: () => void;
   apiUrl?: string;
   categories?: string[];
   activeFilters?: Record<string, string>;
@@ -27,6 +28,7 @@ export const ProductsPanel = ({
   selectedProductId,
   onBackToSearch,
   onProductClick,
+  onClose,
   apiUrl,
   categories = ['car', 'backpack'],
   activeFilters = {},
@@ -38,13 +40,20 @@ export const ProductsPanel = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Track previous category to detect changes
+  const prevCategoryRef = useRef<string>("");
+
   // Fetch products when panel is shown and category is selected
   useEffect(() => {
     if (showPanel && !showDetail && categoryName) {
-      console.log('🔍 Products panel shown with category:', categoryName, 'and filters:', activeFilters);
-      fetchProducts();
+      // Only fetch if category actually changed
+      if (prevCategoryRef.current !== categoryName) {
+        console.log('🔍 Category changed from', prevCategoryRef.current, 'to', categoryName, '- fetching products');
+        fetchProducts();
+        prevCategoryRef.current = categoryName;
+      }
     }
-  }, [showPanel, showDetail, categoryName, activeFilters]);
+  }, [showPanel, showDetail, categoryName]);
 
   // Fetch single product when detail view is shown
   useEffect(() => {
@@ -109,7 +118,7 @@ export const ProductsPanel = ({
       <div className="hidden lg:flex lg:w-80 xl:w-96 border-l flex-col h-full animate-in slide-in-from-right duration-300">
         {/* Header with Back Button */}
         <div className="border-b p-4">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center justify-between gap-2 mb-3">
             <Button
               variant="ghost"
               size="icon"
@@ -118,6 +127,16 @@ export const ProductsPanel = ({
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           {selectedProduct && (
             <h2 className="font-semibold text-lg text-center">{selectedProduct.name}</h2>
@@ -237,14 +256,26 @@ export const ProductsPanel = ({
       <div className="border-b p-4">
         {categoryName ? (
           <>
-            <div className="flex items-center gap-2 mb-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <h2 className="font-semibold text-lg">Searching for</h2>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-semibold text-lg">Searching for</h2>
+              </div>
+              {onClose && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
             <p className="text-base font-medium text-primary">"{categoryName}"</p>
             {!loading && products.length > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                {products.length} products found
+                Showing {Math.min(products.length, 20)} of {products.length} products
               </p>
             )}
 
@@ -310,8 +341,8 @@ export const ProductsPanel = ({
               </Button>
             </div>
           ) : products.length > 0 ? (
-            // Show product cards
-            products.map((product) => (
+            // Show product cards (limit to 20)
+            products.slice(0, 20).map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
