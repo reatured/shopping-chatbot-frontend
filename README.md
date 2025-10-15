@@ -1,8 +1,59 @@
 # Shopping Chatbot Frontend
 
 An **AI-powered shopping assistant** that helps users find products through conversation and image search.
+---
 
 
+- **General Conversation** – natural, open-ended chat with a single unified agent  
+- **Text-Based Product Recommendation** – e.g., “Recommend me a t-shirt for sports.”  
+- **Image-Based Product Search** – upload an image to find visually similar catalog items  
+
+---
+
+## Demo Web Page
+👉 [Frontend Demo](https://shop-glass-ai.lovable.app/)  
+👉 [Backend Repo](https://github.com/reatured/ecommerce-chatbot-api)  
+👉 [Product Database](https://docs.google.com/spreadsheets/d/1LjQn5xgkAsXlW0kxCfq60C8P_siXzzGksx8LdMOH9YU/edit?usp=sharing)  
+_Add more products in any category, and the chatbot automatically adapts its recommendations in real time._
+
+---
+
+## Screenshots
+**Start Page**  
+The landing page showcasing entry points to the AI shopping assistant.  
+![Start Page](./Image/Start%20Page.jpeg)
+
+**General Chat**  
+General chat interface for open-ended shopping questions and guidance.  
+![General Chat](./Image/AI%20Shopping%20General%20Chat.jpeg)
+
+**Filter with AI**  
+AI-powered product filtering to refine results by attributes and preferences.  
+![Filter with AI](./Image/Filter%20with%20AI.png)
+
+**Clarification Questions**  
+AI asks clarifying questions to better understand the user’s needs before recommending.  
+![Clarification Questions](./Image/Clarification%20questions%20from%20AI%20.png)
+
+**Product Results from Custom Database**  
+Products are retrieved from a custom database to ensure accurate, up-to-date results.  
+![Product Results](./Image/Product%20queried%20from%20custom%20database.png)
+
+**Product Detail Page**  
+Detailed product view including specs, visuals, and purchase actions.  
+![Product Detail Page](./Image/Product%20detail%20page.png)
+
+**Product Chat with Quick Buttons**  
+Contextual quick action buttons accelerate follow-up requests during product conversations.  
+![Product Chat with Quick Buttons](./Image/Product%20Chat%20with%20Quick%20Buttons.png)
+
+**Image Search**  
+Upload an image to find visually similar products from the catalog.  
+![Image Search](./Image/Image%20Search.png)
+
+**Image Search 2**  
+Another example of visual search results returned from an uploaded image.  
+![Image Search 2](./Image/Image%20Search%202.png)
 
 ---
 
@@ -128,120 +179,6 @@ Note: All endpoints are served under the same host where the backend is deployed
 		"tags": "auto,accessory"
 	}
 
-### 6) Dynamic Metadata / Field Values
-- Route: internal helper: `get_field_metadata(products, field=None, category_filter=None)`
-- Description: The backend exposes a metadata helper to list available product fields or unique values for a specific field (used by the `/api/init` endpoint and internal tools). There is no public HTTP route for arbitrary metadata other than what `/api/init` returns. If you need a public metadata endpoint, consider adding `GET /api/metadata?field=...&category=...` that wraps `get_field_metadata`.
-
-If you'd like a public API for metadata (recommended for richer frontend filtering UI), here's a suggested HTTP endpoint that wraps the helper and can be added to the backend.
-
-- Route (suggested): `GET /api/metadata`
-- Description: Return available product fields, or unique values for a specific field, optionally scoped to a category.
-- Query parameters:
-	- `field` (optional) — name of the product field to analyze (e.g., `color`, `brand`, `tags`). If omitted, the endpoint returns available fields and field types.
-	- `category` (optional) — limit metadata extraction to products in this category (e.g., `car`, `backpack`).
-
-- Sample use (curl):
-
-		GET ${BASE_URL}/api/metadata?field=color&category=backpack
-
-- Sample success response (values for a specific field):
-
-		{
-			"field": "color",
-			"values": [
-				{"value": "blue", "count": 12},
-				{"value": "black", "count": 8},
-				{"value": "red", "count": 3}
-			],
-			"total_products": 50,
-			"unique_count": 3
-		}
-
-- Sample success response (no field specified):
-
-		{
-			"available_fields": ["id","name","category","brand","price","color","description","image_url","tags"],
-			"field_types": {
-				"id": "numeric",
-				"price": "numeric",
-				"name": "categorical",
-				"category": "categorical",
-				"brand": "categorical",
-				"color": "categorical",
-				"tags": "categorical"
-			},
-			"total_products": 50
-		}
-
-- Sample error response (invalid field):
-
-		{
-			"error": "Field 'nonexistent_field' not found",
-			"available_fields": ["id","name","category","brand","price","color","description","image_url","tags"]
-		}
-
-Implementation note: The backend already implements `get_field_metadata(products, field=None, category_filter=None)`. Exposing `GET /api/metadata` is a small wrapper that should call `fetch_products_from_sheet()` and return the helper's result.
 
 ---
-
-- **General Conversation** – natural, open-ended chat with a single unified agent  
-- **Text-Based Product Recommendation** – e.g., “Recommend me a t-shirt for sports.”  
-- **Image-Based Product Search** – upload an image to find visually similar catalog items  
-
----
-
-## Demo Web Page
-👉 [Frontend Demo](https://shop-glass-ai.lovable.app/)  
-👉 [Backend Repo](https://github.com/reatured/ecommerce-chatbot-api)  
-👉 [Product Database](https://docs.google.com/spreadsheets/d/1LjQn5xgkAsXlW0kxCfq60C8P_siXzzGksx8LdMOH9YU/edit?usp=sharing)  
-_Add more products in any category, and the chatbot automatically adapts its recommendations in real time._
-
----
-
-## Screenshots
-**Start Page**  
-The landing page showcasing entry points to the AI shopping assistant.  
-![Start Page](./Image/Start%20Page.jpeg)
-
-**General Chat**  
-General chat interface for open-ended shopping questions and guidance.  
-![General Chat](./Image/AI%20Shopping%20General%20Chat.jpeg)
-
-**Filter with AI**  
-AI-powered product filtering to refine results by attributes and preferences.  
-![Filter with AI](./Image/Filter%20with%20AI.png)
-
-**Clarification Questions**  
-AI asks clarifying questions to better understand the user’s needs before recommending.  
-![Clarification Questions](./Image/Clarification%20questions%20from%20AI%20.png)
-
-**Product Results from Custom Database**  
-Products are retrieved from a custom database to ensure accurate, up-to-date results.  
-![Product Results](./Image/Product%20queried%20from%20custom%20database.png)
-
-**Product Detail Page**  
-Detailed product view including specs, visuals, and purchase actions.  
-![Product Detail Page](./Image/Product%20detail%20page.png)
-
-**Product Chat with Quick Buttons**  
-Contextual quick action buttons accelerate follow-up requests during product conversations.  
-![Product Chat with Quick Buttons](./Image/Product%20Chat%20with%20Quick%20Buttons.png)
-
-**Image Search**  
-Upload an image to find visually similar products from the catalog.  
-![Image Search](./Image/Image%20Search.png)
-
-**Image Search 2**  
-Another example of visual search results returned from an uploaded image.  
-![Image Search 2](./Image/Image%20Search%202.png)
-
----
-
-## Tech Stack
-**TypeScript · React 18 · Vite · Tailwind CSS · shadcn/ui · TanStack Query**
-
----
-
-## Contributors
-- [@reatured](https://github.com/reatured) (Lingyi Zhou)  
 
