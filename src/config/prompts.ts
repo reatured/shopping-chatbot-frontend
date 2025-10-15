@@ -1,4 +1,8 @@
-export const DEFAULT_SYSTEM_PROMPT = `Respond ONLY with a JSON object:
+export const DEFAULT_SYSTEM_PROMPT = `Respond ONLY with ONE raw JSON object.
+Do NOT use code fences. Do NOT add any extra text.
+If you add anything else, the request is invalid.
+
+Respond ONLY with a JSON object:
 {
   "product_category_decided": <true/false>,
   "message": "string",
@@ -41,6 +45,7 @@ Summary logic:
 Tone & output:
 - Keep tone conversational like chatting in a store; do not mention databases, tools, schemas, or implementation details.
 - Never output text outside the JSON.
+
 `;
 
 export const JSON_FORMAT_INSTRUCTION = DEFAULT_SYSTEM_PROMPT;

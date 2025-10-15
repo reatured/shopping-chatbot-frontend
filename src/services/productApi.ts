@@ -179,6 +179,12 @@ export async function fetchProductsByName(
   });
 
   if (isJustCategory) {
+    // Check if we have brand filter - if yes, search by brand name
+    if (additionalFilters?.brand) {
+      console.log(`🔎 Searching for brand "${additionalFilters.brand}" in category "${category}"`);
+      return searchProducts(additionalFilters.brand, category as any, apiUrl);
+    }
+
     // General category view - get all products in category
     console.log(`📦 Fetching all products for category: ${category}`, additionalFilters ? `with filters: ${JSON.stringify(additionalFilters)}` : '');
     return getProductsByCategory(category as any, apiUrl, additionalFilters);
@@ -195,16 +201,13 @@ export async function fetchProductsByName(
     searchQuery = searchQuery.trim();
 
     if (searchQuery) {
-      // Check if we have additional filters - if yes, use getProducts with filters
-      if (additionalFilters && Object.keys(additionalFilters).length > 0) {
-        // Use getProducts with combined filters (category + additional filters)
-        console.log(`🔎 Searching with filters for "${searchQuery}" in category "${category}"`, `filters: ${JSON.stringify(additionalFilters)}`);
-        return getProductsByCategory(category as any, apiUrl, additionalFilters);
-      } else {
-        // No filters - use text search endpoint
-        console.log(`🔎 Text search for "${searchQuery}" in category "${category}"`);
-        return searchProducts(searchQuery, category as any, apiUrl);
-      }
+      // Use text search endpoint for the extracted query
+      console.log(`🔎 Text search for "${searchQuery}" in category "${category}"`);
+      return searchProducts(searchQuery, category as any, apiUrl);
+    } else if (additionalFilters?.brand) {
+      // No search query but has brand filter - search by brand
+      console.log(`🔎 Searching for brand "${additionalFilters.brand}" in category "${category}"`);
+      return searchProducts(additionalFilters.brand, category as any, apiUrl);
     } else {
       // Fallback to category browse with filters
       console.log(`📦 Fallback: Fetching all products for category: ${category}`, additionalFilters ? `with filters: ${JSON.stringify(additionalFilters)}` : '');
